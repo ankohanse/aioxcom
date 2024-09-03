@@ -43,7 +43,9 @@ _LOGGER = logging.getLogger(__name__)
 
 
 DEFAULT_PORT = 4001
-REQ_TIMEOUT = 2 # seconds
+START_TIMEOUT = 30 # seconds
+STOP_TIMEOUT = 5
+REQ_TIMEOUT = 2
 REQ_RETRIES = 3
 
 
@@ -83,19 +85,18 @@ class XcomApiTcp:
         self._sendPackageLock = asyncio.Lock() # to make sure _sendPackage is never called concurrently
 
 
-    async def start(self):
+    async def start(self, timeout=START_TIMEOUT):
         if not self._started:
             _LOGGER.info(f"Xcom TCP server start listening on port {self.localPort}")
 
-            self._server = await asyncio.start_server(self._client_connected_callback, "0.0.0.0", self.localPort, limit=1000, family=socket.AF_INET, reuse_port=True)
+            self._server = await asyncio.start_server(self._client_connected_callback, "0.0.0.0", self.localPort, limit=1000, family=socket.AF_INET)
             self._server._start_serving()
             self._started = True
-
-            _LOGGER.info("Waiting for Xcom TCP client to connect...")
         else:
             _LOGGER.info(f"Xcom TCP server already listening on port {self.localPort}")
 
-        return self
+        _LOGGER.info("Waiting for Xcom TCP client to connect...")
+        return await self._waitConnected(timeout)
 
 
     async def stop(self):
@@ -112,7 +113,7 @@ class XcomApiTcp:
 
         # Close the server
         try:
-            async with asyncio.timeout(5):
+            async with asyncio.timeout(STOP_TIMEOUT):
                 if self._server:
                     self._server.close()
                     await self._server.wait_closed()
@@ -129,7 +130,21 @@ class XcomApiTcp:
     @property
     def connected(self):
         return self._connected
-    
+
+
+    async def _waitConnected(self, timeout) -> bool:
+        try:
+            for i in range(timeout):
+                if self.connected:
+                    return True
+                
+                await asyncio.sleep(1)
+
+        except Exception as e:
+            _LOGGER.warning(f"Exception while checking connection to Xcom client: {e}")
+
+        return False
+
 
     async def _client_connected_callback(self, reader, writer):
         self._reader = reader
