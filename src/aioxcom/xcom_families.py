@@ -48,7 +48,7 @@ class XcomDeviceFamilies:
         "xt", "xt",
         "Xtender", 
         100,                   # addr multicast to all devices (write only)
-        101, 115,              # addr devices,  start to end
+        101, 109,              # addr devices,  start to end
         1000, 1999,            # nr for params, start to end
         3000, 3999,            # nr for infos,  start to end 
         3000,                  # nr for discovery

@@ -29,6 +29,11 @@ class ValueTuple:
         return self.value
 
 
+class VOLTAGE(StrEnum):
+    AC120 = "240 Vac"
+    AC240 = "240 Vac"
+
+
 ### data types
 class LEVEL(IntEnum):
     INFO   = 0x0000

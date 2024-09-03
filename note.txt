@@ -1,0 +1,9 @@
+To generate distribution archives:
+- Update the version number in pyproject.toml
+- run 
+    py -m  build
+
+
+Uploading distribution archives:
+-run  
+    py -m twine uplodad dist/*

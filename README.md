@@ -1,4 +1,3 @@
-[![version](https://img.shields.io/github/v/release/ankohanse/aioxcom?style=for-the-badge)](https://github.com/ankohanse/aioxcom)
 [![license](https://img.shields.io/github/license/toreamun/amshan-homeassistant?style=for-the-badge)](LICENSE)
 [![buy_me_a_coffee](https://img.shields.io/badge/If%20you%20like%20it-Buy%20me%20a%20coffee-yellow.svg?style=for-the-badge)](https://www.buymeacoffee.com/ankohanse)
 
@@ -56,10 +55,45 @@ Configuration steps:
 
 # Usage
 
-TODO
+To read an infos or param or write to a param:
+
+```
+from aioxcom import XcomApiTcp, XcomDataset, VOLTAGE
+
+api = XcomApiTcp(4001)    # port number configured in Xcom-LAN/Moxa NPort
+dataset = XcomDataset.create(VOLTAGE.AC240) # or use VOLTAGE.AC120
+try:
+    await api.start()
+
+    # Retrieve info #3023 from the first Xtender (Output power)
+    param = dataset.getByNr(3023, "xt")
+    value = await api.requestValue(param, 101)    # xt address range is 101 to 109
+    print f"XT1 3023: {value}"
+
+    # Retrieve param #6001 from BSP (Nominal capacity)
+    param = dataset.getByNr(6001, "bsp")
+    value = await api.requestValue(param, 601)    # bsp address range is only 601
+    print f"BSP 6001: {value}"
+
+    # Update param 1107 on the first Xtender (Maximum current of AC source)
+    param = dataset.getByNr(1107, "xt")
+    value = 4.0    # 4 Ampere
+    if await api.updateValue(param, value 101):
+        print f"XT1 1107 updated to {value}
+
+    # Retrieve menu structure
+    items = dataset.getMenu(0, "xt)     # use 0 for root menu, or item.nr for lower menu's
+
+finally:
+    await api.stop()
+```
+
+A complete list of param and infos numbers can be found in the source of this library in file `src/aioxcom/xcom_datapoints_240v.json`  
+
+A complete list of all available device families and their address range can be found in file `src/aioxcom/xcom_families.py`  
 
 
-# Param writes to device
+# Param writes to device RAM
 
 When the value of a Studer param is changed via this library, these are written via Xcom to the affected device. 
 Changes are stored in the device's RAM memory, not in its flash memory as you can only write to flash a limited number of time over its lifetime.

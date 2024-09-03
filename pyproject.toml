@@ -1,6 +1,6 @@
 [project]
 name = "aioxcom"
-version = "0.0.1"
+version = "0.0.5"
 authors = [
   { name="Anko Hanse", email="anko_hanse@hotmail.com" },
 ]
@@ -24,3 +24,7 @@ requires = [
     "cython"
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
