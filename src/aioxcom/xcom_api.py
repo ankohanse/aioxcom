@@ -85,7 +85,7 @@ class XcomApiTcp:
         self._sendPackageLock = asyncio.Lock() # to make sure _sendPackage is never called concurrently
 
 
-    async def start(self, timeout=START_TIMEOUT):
+    async def start(self, timeout=START_TIMEOUT) -> bool:
         if not self._started:
             _LOGGER.info(f"Xcom TCP server start listening on port {self.localPort}")
 
@@ -135,7 +135,7 @@ class XcomApiTcp:
     async def _waitConnected(self, timeout) -> bool:
         try:
             for i in range(timeout):
-                if self.connected:
+                if self._connected:
                     return True
                 
                 await asyncio.sleep(1)

@@ -6,4 +6,4 @@ To generate distribution archives:
 
 Uploading distribution archives:
 -run  
-    py -m twine uplodad dist/*
+    py -m twine upload dist/*
