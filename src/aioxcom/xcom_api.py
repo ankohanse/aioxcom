@@ -165,7 +165,11 @@ class XcomApiTcp:
             XcomApiTimeoutException
             XcomApiResponseIsError
         """
-        
+
+        # Check/convert input parameters        
+        if type(dstAddr) is str:
+            dstAddr = XcomDeviceFamilies.getAddrByCode(dstAddr)
+
         # Sometimes the Xcom client does not seem to pickup a request
         # so retry if needed
         last_exception = None
@@ -256,6 +260,9 @@ class XcomApiTcp:
         if parameter.obj_type != OBJ_TYPE.PARAMETER:
             _LOGGER.warn(f"Ignoring attempt to update readonly infos value {parameter}")
             return None
+
+        if type(dstAddr) is str:
+            dstAddr = XcomDeviceFamilies.getAddrByCode(dstAddr)
 
         _LOGGER.debug(f"Update value {parameter} on addr {dstAddr}")
 

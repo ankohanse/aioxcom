@@ -10,7 +10,13 @@ from dataclasses import dataclass
 _LOGGER = logging.getLogger(__name__)
 
 
+class XcomDeviceAddrUnknownException(Exception):
+    pass
+
 class XcomDeviceFamilyUnknownException(Exception):
+    pass
+
+class XcomDeviceCodeUnknownException(Exception):
     pass
 
     
@@ -28,7 +34,7 @@ class XcomDeviceFamily:
     nrInfosEnd: int
     nrDiscover: int
 
-    def get_code(self, addr):
+    def getCode(self, addr):
         if addr == self.addrMulticast:
             return self.id.upper()
         
@@ -39,8 +45,7 @@ class XcomDeviceFamily:
             idx = addr - self.addrDevicesStart + 1
             return f"{self.id.upper()}{idx}"
         
-        _LOGGER.debug(f"Addr {addr} is not in range for family {self.id} addresses ({self.addrDevicesStart}-{self.addrDevicesEnd})")
-        return None
+        raise XcomDeviceAddrUnknownException(f"Addr {addr} is not in range for family {self.id} addresses ({self.addrDevicesStart}-{self.addrDevicesEnd})")
 
 
 class XcomDeviceFamilies:
@@ -133,6 +138,30 @@ class XcomDeviceFamilies:
                 return f
 
         raise XcomDeviceFamilyUnknownException(id)
+    
+
+    # Static variable to cache helper mapping
+    _addr_map = None
+
+    @staticmethod
+    def _buildAddrMap():
+        """Fill static variable once"""
+        if XcomDeviceFamilies._addr_map is None:
+            XcomDeviceFamilies._addr_map = {}
+            for f in XcomDeviceFamilies.getList():
+                for addr in range(f.addrDevicesStart, f.addrDevicesEnd+1):
+                    XcomDeviceFamilies._addr_map[f.getCode(addr)] = addr
+
+
+    @staticmethod
+    def getAddrByCode(code: str) -> int:
+        """Lookup the code to find the addr"""
+        XcomDeviceFamilies._buildAddrMap()
+        addr = XcomDeviceFamilies._addr_map.get(code, None)
+        if addr is not None:
+            return addr
+    
+        raise XcomDeviceCodeUnknownException(str)
 
 
     @staticmethod

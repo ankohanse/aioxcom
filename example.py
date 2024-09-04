@@ -23,11 +23,11 @@ async def main():
             return
 
         # Retrieve info #3023 from the first Xtender (Output power)
-        value = await api.requestValue(info3023, 101)    # xt address range is 101 to 109
+        value = await api.requestValue(info3023, 101)    # xt address range is 101 to 109, or use "XT1" to "XT9"
         logger.info(f"XT1 3023: {value} {info3023.unit} ({info3023.name})")
 
         # Retrieve param #6001 from BSP (Nominal capacity)
-        value = await api.requestValue(info6001, 601)    # bsp address range is only 601
+        value = await api.requestValue(info6001, 601)    # bsp address range is only 601, or use "BSP"
         logger.info(f"BSP 6001: {value} {info6001.unit} ({info6001.name})")
 
         # Update param 1107 on the first Xtender (Maximum current of AC source)
