@@ -19,6 +19,10 @@ It should also be able to detect and handle
 - VarioString
 - RCC-02
 
+Disclaimer: this library is NOT created by Studer-Innotec, but is based on their documentation of the Xcom protocol.
+That documentation can be found on:
+[Studer-Innotec Download Center](https://www.studer-innotec.com/en/downloads/) *-> Software and Updates -> Communication protocol Xcom-232i*
+
 
 # Prerequisites
 
@@ -61,9 +65,9 @@ To read an infos or param or write to a param:
 from aioxcom import XcomApiTcp, XcomDataset, VOLTAGE
 
 dataset = XcomDataset.create(VOLTAGE.AC240) # or use VOLTAGE.AC120
-info3023 = dataset.getByNr(3023, "xt")  # the "xt" part is optional
-info6001 = dataset.getByNr(6001, "bsp")
-param1107 = dataset.getByNr(1107, "xt")
+info_3023 = dataset.getByNr(3023, "xt")  # the "xt" part is optional but usefull for detecting mistakes
+info_6001 = dataset.getByNr(6001, "bsp")
+param_1107 = dataset.getByNr(1107, "xt")
 dataset = None  # Release memory of the dataset
 
 api = XcomApiTcp(4001)    # port number configured in Xcom-LAN/Moxa NPort
@@ -73,17 +77,17 @@ try:
         return
 
     # Retrieve info #3023 from the first Xtender (Output power)
-    value = await api.requestValue(info3023, 101)    # xt address range is 101 to 109, or use "XT1" to "XT9"
-    logger.info(f"XT1 3023: {value} {info3023.unit} ({info3023.name})")
+    value = await api.requestValue(info_3023, "XT1")    # xt address range is 101 to 109, or use "XT1" to "XT9"
+    logger.info(f"XT1 3023: {value} {info_3023.unit} ({info_3023.name})")
 
     # Retrieve param #6001 from BSP (Nominal capacity)
-    value = await api.requestValue(info6001, 601)    # bsp address range is only 601, or use "BSP"
-    logger.info(f"BSP 6001: {value} {info6001.unit} ({info6001.name})")
+    value = await api.requestValue(info_6001, "BSP")    # bsp address range is only 601, or use "BSP"
+    logger.info(f"BSP 6001: {value} {info_6001.unit} ({info_6001.name})")
 
     # Update param 1107 on the first Xtender (Maximum current of AC source)
     value = 4.0    # 4 Ampere
-    if await api.updateValue(param1107, value, 101):
-        logger.info(f"XT1 1107 updated to {value} {param1107.unit} ({param1107.name})")
+    if await api.updateValue(param_1107, value, "XT1"):
+        logger.info(f"XT1 1107 updated to {value} {param_1107.unit} ({param_1107.name})")
 
 finally:
     await api.stop()
@@ -99,12 +103,11 @@ A complete list of all available device families and their address range can be 
 When the value of a Studer param is changed via this library, these are written via Xcom to the affected device. 
 Changes are stored in the device's RAM memory, not in its flash memory as you can only write to flash a limited number of time over its lifetime.
 
-However, reading back the value from the entity will be from flash (querying RAM gives unreliable responses). As a result, the change to the entity value is not visible. You can only tell from the behavior of the PV system that the Studer param was indeed changed.  
+However, reading back the value from the entity will always be from flash. As a result, the change to the entity value is not visible. You can only tell from the behavior of the PV system that the Studer param was indeed changed.  
 After a restart/reboot of the PV system the system will revert to the value from Flash. So you may want to periodically repeat the write of changed param values via an automation.
 
 **IMPORTANT**:
 
-I will not take responsibility for damage to your PV system resulting from you choosing to change Studer params you are not supposed to change. Or setting a combination of param values that cause an invalid status.  
 Be very carefull in changing params marked as having level Expert, Installer or even Qualified Service Person. If you do not know what the effect of a Studer param change is, then do not change it.
 
 
