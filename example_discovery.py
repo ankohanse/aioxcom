@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 async def main():
     api     = XcomApiTcp(4001)    # port number configured in Xcom-LAN/Moxa NPort
-    dataset = XcomDataset.create(VOLTAGE.AC240) # or use VOLTAGE.AC120
+    dataset = await XcomDataset.create(VOLTAGE.AC240) # or use VOLTAGE.AC120
 
     try:
         if not await api.start():

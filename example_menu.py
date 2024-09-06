@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 async def main():
     # Print entire menu structure
-    dataset = XcomDataset.create(VOLTAGE.AC240) # or use VOLTAGE.AC120
+    dataset = await XcomDataset.create(VOLTAGE.AC240) # or use VOLTAGE.AC120
 
     # Helper function to recursively print the entire menu
     async def printMenu(parent, indent=""):

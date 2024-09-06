@@ -1,16 +1,16 @@
 import pytest
 from aioxcom import XcomDataset, VOLTAGE, FORMAT, OBJ_TYPE, XcomDatapointUnknownException
 
-def test_create():
-    dataset120 = XcomDataset.create(VOLTAGE.AC120)    
-    dataset240 = XcomDataset.create(VOLTAGE.AC240)
+async def test_create():
+    dataset120 = await XcomDataset.create(VOLTAGE.AC120)    
+    dataset240 = await XcomDataset.create(VOLTAGE.AC240)
 
     assert len(dataset120._datapoints) == 1435
     assert len(dataset240._datapoints) == 1435
 
 
-def test_nr():
-    dataset = XcomDataset.create(VOLTAGE.AC240)
+async def test_nr():
+    dataset = await XcomDataset.create(VOLTAGE.AC240)
 
     param = dataset.getByNr(1107)
     assert param.family_id == "xt"
@@ -37,8 +37,8 @@ def test_nr():
         param = dataset.getByNr(3000, "bsp")
 
 
-def test_menu():
-    dataset = XcomDataset.create(VOLTAGE.AC240)
+async def test_menu():
+    dataset = await XcomDataset.create(VOLTAGE.AC240)
     
     root_items = dataset.getMenuItems(0)
     assert len(root_items) == 11

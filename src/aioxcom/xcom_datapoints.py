@@ -4,13 +4,13 @@
 # Definition of all parameters / constants used in the Xcom protocol
 ##
 
+import aiofiles
 import json
 import logging
 import orjson
 import struct
 
 from dataclasses import dataclass
-from pathlib import Path
 
 from .xcom_const import (
     LEVEL,
@@ -98,16 +98,19 @@ class XcomDataset:
    
 
     @staticmethod
-    def create(voltage: str):
+    async def create(voltage: str):
         """
         The actual XcomDataset list is kept in a separate json file to reduce the memory size needed to load the integration.
         The list is only loaded during config flow and during initial startup, and then released again.
         """
-        path_120vac = Path(__file__.replace('.py', '_120v.json'))   # Override values for 120 Vac
-        path_240vac = Path(__file__.replace('.py', '_240v.json'))   # Base values for both 120 Vac and 240 Vac
+        path_120vac = __file__.replace('.py', '_120v.json')   # Override values for 120 Vac
+        path_240vac = __file__.replace('.py', '_240v.json')   # Base values for both 120 Vac and 240 Vac
 
-        text_120vac = path_120vac.read_text(encoding="UTF-8")
-        text_240vac = path_240vac.read_text(encoding="UTF-8")
+        async with aiofiles.open(path_120vac, "r", encoding="UTF-8") as file_120vac:
+            text_120vac = await file_120vac.read()
+        async with aiofiles.open(path_240vac, "r", encoding="UTF-8") as file_240vac:
+            text_240vac = await file_240vac.read()
+        
         values_120vac = orjson.loads(text_120vac)
         values_240vac = orjson.loads(text_240vac)
 

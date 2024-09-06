@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 async def main():
-    dataset = XcomDataset.create(VOLTAGE.AC240) # or use VOLTAGE.AC120
+    dataset = await XcomDataset.create(VOLTAGE.AC240) # or use VOLTAGE.AC120
     info_3023 = dataset.getByNr(3023, "xt")  # the "xt" part is optional but usefull for detecting mistakes
     info_6001 = dataset.getByNr(6001, "bsp")
     param_1107 = dataset.getByNr(1107, "xt")
