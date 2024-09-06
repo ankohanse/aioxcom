@@ -144,6 +144,14 @@ class XcomDataset:
         raise XcomDatapointUnknownException(nr, family_id)
     
 
+    def getByName(self, name: str, family_id: str|None = None) -> XcomDatapoint:
+        for point in self._datapoints:
+            if point.name == name and (point.family_id == family_id or family_id is None):
+                return point
+
+        raise XcomDatapointUnknownException(name, family_id)
+    
+
     def getMenuItems(self, parent: int = 0, family_id: str|None = None):
         datapoints = []
         for point in self._datapoints:
