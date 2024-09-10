@@ -59,6 +59,9 @@ Configuration steps:
 
 # Usage
 
+The library is available from PyPi using:
+`pip install aioxcom`
+
 To read an infos or param or write to a param:
 
 ```
