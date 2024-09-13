@@ -324,13 +324,13 @@ class XcomPackage:
     @staticmethod
     async def parse(f: BufferedReader):
         # package sometimes starts with 0xff
-        skip = 0
+        skip = -1
         raw_sb = b''
         while raw_sb != XcomPackage.start_byte:
             raw_sb = await f.read(1)
             skip += 1
 
-        if skip > 1:
+        if skip > 0:
             _LOGGER.debug(f"skipped {skip} bytes until start_byte")
 
         h_raw = await f.read(XcomHeader.length)
