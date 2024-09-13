@@ -133,7 +133,6 @@ class XcomTestClientTcp:
             try:
                 _LOGGER.info(f"Xcom TCP Test Client send response package {package}")
                 self._writer.write(package.getBytes())
-                self._writer.write(b'\x0A\x0D')
                 await self._writer.drain()
 
             except Exception as e:
