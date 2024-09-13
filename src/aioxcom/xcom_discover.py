@@ -1,6 +1,5 @@
 """xcom_api.py: communication api to Studer Xcom via LAN."""
 
-import asyncio
 from dataclasses import dataclass
 import logging
 import struct

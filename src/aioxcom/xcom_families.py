@@ -2,7 +2,6 @@
 # Definition of all known device families used in the Xcom protocol
 ##
 
-import struct
 import logging
 from dataclasses import dataclass
 

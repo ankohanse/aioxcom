@@ -1,13 +1,8 @@
 """xcom_api.py: communication api to Studer Xcom via LAN."""
 
 import asyncio
-
-import contextlib
 import logging
 import socket
-
-from concurrent.futures import ThreadPoolExecutor
-from io import BufferedWriter, BytesIO
 
 from .xcom_const import (
     FORMAT,

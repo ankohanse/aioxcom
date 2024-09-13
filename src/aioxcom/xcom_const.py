@@ -4,8 +4,6 @@
 # Definition of all parameters / constants used in the Xcom protocol
 ##
 
-import enum
-import struct
 from dataclasses import dataclass
 from enum import IntEnum, StrEnum
 

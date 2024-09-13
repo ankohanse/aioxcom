@@ -5,10 +5,8 @@
 ##
 
 import aiofiles
-import json
 import logging
 import orjson
-import struct
 
 from dataclasses import dataclass
 
