@@ -46,7 +46,7 @@ class XcomDiscover:
         self._dataset = dataset
 
 
-    async def discoverDevices(self, extended = False) -> list[XcomDiscoveredDevice]:
+    async def discoverDevices(self, getExtendedInfo = False) -> list[XcomDiscoveredDevice]:
         """
         Discover which Studer devices can be reached via the Xcom client
         """
@@ -75,7 +75,7 @@ class XcomDiscover:
                         _LOGGER.info(f"Found device {device_code} via {nr}:{device_addr}")
 
                         device = XcomDiscoveredDevice(device_code, device_addr, family.id, family.model)
-                        if extended:
+                        if getExtendedInfo:
                             device = await self.getExtendedDeviceInfo(device)
                         
                         devices.append(device)
