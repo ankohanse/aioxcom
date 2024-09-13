@@ -1,7 +1,6 @@
 import asyncio
 import pytest
 import pytest_asyncio
-from pytest_cases import param_fixture
 from aioxcom import XcomApiTcp, XcomDataset, XcomData
 from aioxcom import XcomApiTimeoutException, XcomApiResponseIsError
 from aioxcom import VOLTAGE, FORMAT, SCOM_SERVICE, SCOM_OBJ_TYPE, SCOM_QSP_ID, SCOM_ERROR_CODES

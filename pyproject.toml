@@ -6,11 +6,20 @@ authors = [
 ]
 description = "Async python library to communicate with Studer-Innotec devices on the local network via Xcom protocol"
 readme = "README.md"
-requires-python = ">=3.8"
+license = "GPL-3.0-or-later"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Operating System :: OS Independent",
+]
+requires-python = ">=3.8"
+dependencies = [
+]
+
+[project.optional-dependencies]
+tests = [
+  'pytest',
+  'pytest-asyncio',
 ]
  
 [project.urls]
