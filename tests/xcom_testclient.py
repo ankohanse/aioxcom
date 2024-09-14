@@ -78,6 +78,7 @@ class XcomTestClientTcp:
             # Close the writer; we do not need to close the reader
             if self._writer:
                 self._writer.close()
+                await self._writer.wait_closed()
     
         except Exception as e:
             _LOGGER.warning(f"Exception during closing of Xcom writer: {e}")
@@ -137,27 +138,3 @@ class XcomTestClientTcp:
 
             except Exception as e:
                 raise XcomApiWriteException(f"Exception while sending package to Xcom server: {e}") from None
-
-
-    async def requestHandle(self,
-            expected_dst_addr,
-            expected_service_id,
-            expected_object_type,
-            expected_object_id,
-            expected_property_id,
-            response_flags,
-            response_data):
-        
-        p: XcomPackage = await self.receivePackage()
-
-        assert p.header.dst_addr == expected_dst_addr
-        assert p.frame_data.service_id == expected_service_id
-        assert p.frame_data.service_data.object_type == expected_object_type
-        assert p.frame_data.service_data.object_id == expected_object_id
-        assert p.frame_data.service_data.property_id == expected_property_id
-
-        p.frame_data.service_flags = response_flags
-        p.frame_data.service_data.property_data = response_data
-        p.header.data_length = len(p.frame_data)
-
-        await self.sendPackage(p)

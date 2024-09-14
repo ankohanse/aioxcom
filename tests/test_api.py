@@ -1,7 +1,9 @@
 import asyncio
+import copy
 import pytest
 import pytest_asyncio
-from aioxcom import XcomApiTcp, XcomDataset, XcomData
+
+from aioxcom import XcomApiTcp, XcomDataset, XcomData, XcomPackage
 from aioxcom import XcomApiTimeoutException, XcomApiResponseIsError
 from aioxcom import VOLTAGE, FORMAT, SCOM_SERVICE, SCOM_OBJ_TYPE, SCOM_QSP_ID, SCOM_ERROR_CODES
 from . import XcomTestClientTcp
@@ -35,56 +37,6 @@ class TestContext:
         self.client = None
 
 
-    async def run_request_response(self,
-        port,
-        test_nr,
-        test_dest,
-        test_value_update,
-        expected_service_id,
-        expected_object_type,
-        expected_object_id,
-        expected_property_id,
-        response_flags,
-        response_data,
-        expected_value,
-        expected_exception_type,
-    ):
-        # The order of start is important, first server, then client.
-        await self.start_server(port)
-        await self.start_client(port)
-
-        await self.server._waitConnected(5)
-        assert self.server.connected == True
-        assert self.client.connected == True
-
-        dataset = await XcomDataset.create(VOLTAGE.AC240)
-        param = dataset.getByNr(test_nr)
-
-        if test_value_update:
-            task_server = asyncio.create_task(self.server.updateValue(param, test_value_update, test_dest, retries=1, timeout=5))
-        else:
-            task_server = asyncio.create_task(self.server.requestValue(param, test_dest, retries=1, timeout=5))
-
-        task_client = asyncio.create_task(self.client.requestHandle(
-            expected_dst_addr = test_dest,
-            expected_service_id = expected_service_id,
-            expected_object_type = expected_object_type,
-            expected_object_id = expected_object_id,
-            expected_property_id = expected_property_id,
-            response_flags = response_flags,
-            response_data = response_data,
-        ))
-
-        await task_client
-
-        if expected_exception_type == None:
-            value = await task_server
-            assert value == expected_value
-        else:
-            with pytest.raises(expected_exception_type):
-                await task_server
-
-
 @pytest_asyncio.fixture
 async def context():
     # Prepare
@@ -99,18 +51,62 @@ async def context():
 
 
 @pytest.mark.asyncio
-async def test_connect_timeout(context, unused_tcp_port):
-    port = unused_tcp_port
-    await context.start_server(port)
-    assert context.server.connected == False
+@pytest.mark.usefixtures("context", "unused_tcp_port")
+@pytest.mark.parametrize(
+    "name, start_server, start_client, wait_server, exp_server_conn, exp_client_conn",
+    [
+        ("connect no start", False, False, False, False, False),
+        ("connect no wait",  True,  False, False, False, False),
+        ("connect timeout",  True,  False, True,  False, False),
+        ("connect ok",       True,  True,  True,  True,  True),
+    ]
+)
+async def test_connect(name, start_server, start_client, wait_server, exp_server_conn, exp_client_conn, request):
+    context = request.getfixturevalue("context")
+    port    = request.getfixturevalue("unused_tcp_port")
 
-    await context.server._waitConnected(1)
-    assert context.server.connected == False
+    assert context.server is None
+    assert context.client is None
+
+    if start_server:
+        await context.start_server(port)
+
+        assert context.server is not None
+        assert context.server.connected == False
+
+    if start_client:
+        await context.start_client(port)
+
+        assert context.client is not None
+
+    if wait_server:
+        await context.server._waitConnected(5)
+
+        assert context.server is not None
+
+    assert context.server is None or context.server.connected == exp_server_conn
+    assert context.client is None or context.client.connected == exp_client_conn
 
 
-@pytest.mark.asyncio()
-async def test_connect_ok(context, unused_tcp_port):
-    port = unused_tcp_port
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("context", "unused_tcp_port")
+@pytest.mark.parametrize(
+    "name, test_nr, test_dest, test_value_update, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except",
+    [
+        ("request info ok",      3000, 100, None, 100, SCOM_SERVICE.READ, SCOM_OBJ_TYPE.INFO, 3000, SCOM_QSP_ID.VALUE, 0x02, XcomData.pack(1234.0, FORMAT.FLOAT), 1234.0, None),
+        ("request info err",     3000, 100, None, 100, SCOM_SERVICE.READ, SCOM_OBJ_TYPE.INFO, 3000, SCOM_QSP_ID.VALUE, 0x03, SCOM_ERROR_CODES.READ_PROPERTY_FAILED, None, XcomApiResponseIsError),
+        ("request info timeout", 3000, 100, None, 100, SCOM_SERVICE.READ, SCOM_OBJ_TYPE.INFO, 3000, SCOM_QSP_ID.VALUE, 0x00, XcomData.pack(1234.0, FORMAT.FLOAT), None, XcomApiTimeoutException),
+        ("request param ok",     1107, 100, None, 100, SCOM_SERVICE.READ, SCOM_OBJ_TYPE.PARAMETER, 1107, SCOM_QSP_ID.UNSAVED_VALUE, 0x02, XcomData.pack(1234.0, FORMAT.FLOAT), 1234.0, None),
+        ("update param ok",      1107, 100, 4.0,  100, SCOM_SERVICE.WRITE, SCOM_OBJ_TYPE.PARAMETER, 1107, SCOM_QSP_ID.UNSAVED_VALUE, 0x02, b'', True, None),
+        ("update param err",     1107, 100, 4.0,  100, SCOM_SERVICE.WRITE, SCOM_OBJ_TYPE.PARAMETER, 1107, SCOM_QSP_ID.UNSAVED_VALUE, 0x03, SCOM_ERROR_CODES.WRITE_PROPERTY_FAILED, None, XcomApiResponseIsError),
+        ("update param timeout", 1107, 100, 4.0,  100, SCOM_SERVICE.WRITE, SCOM_OBJ_TYPE.PARAMETER, 1107, SCOM_QSP_ID.UNSAVED_VALUE, 0x00, b'', None, XcomApiTimeoutException),
+    ]
+)
+async def test_request(name, test_nr, test_dest, test_value_update, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except, request):
+    context = request.getfixturevalue("context")
+    port    = request.getfixturevalue("unused_tcp_port")
+
+    # The order of start is important, first server, then client.
     await context.start_server(port)
     await context.start_client(port)
 
@@ -118,136 +114,46 @@ async def test_connect_ok(context, unused_tcp_port):
     assert context.server.connected == True
     assert context.client.connected == True
 
+    dataset = await XcomDataset.create(VOLTAGE.AC240)
+    param = dataset.getByNr(test_nr)
 
-@pytest.mark.asyncio()
-async def test_request_info_ok(context, unused_tcp_port):
+    # Helper function for client to handle a request and submit a response
+    async def clientHandler():
+    
+        # Receive the request from the server
+        req: XcomPackage = await context.client.receivePackage()
 
-    await context.run_request_response(
-        port = unused_tcp_port,
-        test_nr = 3000,
-        test_dest = 100,
-        test_value_update = None,
-        expected_service_id = SCOM_SERVICE.READ,
-        expected_object_type = SCOM_OBJ_TYPE.INFO,
-        expected_object_id = 3000,
-        expected_property_id = SCOM_QSP_ID.VALUE,
-        response_flags = 0x02,   # value response
-        response_data = XcomData.pack(1234.0, FORMAT.FLOAT),
-        expected_value = 1234.0,
-        expected_exception_type = None,
-    )
+        # Make a deep copy of the request and turn it into a response
+        rsp = copy.deepcopy(req)
+        rsp.frame_data.service_flags = rsp_flags
+        rsp.frame_data.service_data.property_data = rsp_data
+        rsp.header.data_length = len(rsp.frame_data)
 
+        # Send the response back to the server
+        await context.client.sendPackage(rsp)
+        return req,rsp
 
-@pytest.mark.asyncio()
-async def test_request_info_err(context, unused_tcp_port):
+    # Start 2 parallel tasks, for server and for client
+    if test_value_update:
+        task_server = asyncio.create_task(context.server.updateValue(param, test_value_update, test_dest, retries=1, timeout=5))
+    else:
+        task_server = asyncio.create_task(context.server.requestValue(param, test_dest, retries=1, timeout=5))
 
-    await context.run_request_response(
-        port = unused_tcp_port,
-        test_nr = 3000,
-        test_dest = 100,
-        test_value_update = None,
-        expected_service_id = SCOM_SERVICE.READ,
-        expected_object_type = SCOM_OBJ_TYPE.INFO,
-        expected_object_id = 3000,
-        expected_property_id = SCOM_QSP_ID.VALUE,
-        response_flags = 0x03,   # error response
-        response_data = SCOM_ERROR_CODES.READ_PROPERTY_FAILED,
-        expected_value = None,
-        expected_exception_type = XcomApiResponseIsError,
-    )
+    task_client = asyncio.create_task(clientHandler())
 
+    # Wait for client to finish and check the received request
+    req, rsp = await task_client
 
-@pytest.mark.asyncio()
-async def test_request_info_timeout(context, unused_tcp_port):
+    assert req.header.dst_addr == exp_dst_addr
+    assert req.frame_data.service_id == exp_svc_id
+    assert req.frame_data.service_data.object_type == exp_obj_type
+    assert req.frame_data.service_data.object_id == exp_obj_id
+    assert req.frame_data.service_data.property_id == exp_prop_id
 
-    await context.run_request_response(
-        port = unused_tcp_port,
-        test_nr = 3000,
-        test_dest = 100,
-        test_value_update = None,
-        expected_service_id = SCOM_SERVICE.READ,
-        expected_object_type = SCOM_OBJ_TYPE.INFO,
-        expected_object_id = 3000,
-        expected_property_id = SCOM_QSP_ID.VALUE,
-        response_flags = 0x00,   # not a response
-        response_data = XcomData.pack(1234.0, FORMAT.FLOAT),
-        expected_value = None,
-        expected_exception_type = XcomApiTimeoutException,
-    )
-
-
-@pytest.mark.asyncio()
-async def test_request_param_ok(context, unused_tcp_port):
-
-    await context.run_request_response(
-        port = unused_tcp_port,
-        test_nr = 1107,
-        test_dest = 100,
-        test_value_update = None,
-        expected_service_id = SCOM_SERVICE.READ,
-        expected_object_type = SCOM_OBJ_TYPE.PARAMETER,
-        expected_object_id = 1107,
-        expected_property_id = SCOM_QSP_ID.UNSAVED_VALUE,
-        response_flags = 0x02,   # value response
-        response_data = XcomData.pack(1234.0, FORMAT.FLOAT),
-        expected_value = 1234.0,
-        expected_exception_type = None,
-    )
-
-
-@pytest.mark.asyncio()
-async def test_update_param_ok(context, unused_tcp_port):
-
-    await context.run_request_response(
-        port = unused_tcp_port,
-        test_nr = 1107,
-        test_dest = 100,
-        test_value_update = 4.0,
-        expected_service_id = SCOM_SERVICE.WRITE,
-        expected_object_type = SCOM_OBJ_TYPE.PARAMETER,
-        expected_object_id = 1107,
-        expected_property_id = SCOM_QSP_ID.UNSAVED_VALUE,
-        response_flags = 0x02,   # response
-        response_data = b'', # empty data means success
-        expected_value = True,
-        expected_exception_type = None,
-    )
-
-
-@pytest.mark.asyncio()
-async def test_update_param_err(context, unused_tcp_port):
-
-    await context.run_request_response(
-        port = unused_tcp_port,
-        test_nr = 1107,
-        test_dest = 100,
-        test_value_update = 4.0,
-        expected_service_id = SCOM_SERVICE.WRITE,
-        expected_object_type = SCOM_OBJ_TYPE.PARAMETER,
-        expected_object_id = 1107,
-        expected_property_id = SCOM_QSP_ID.UNSAVED_VALUE,
-        response_flags = 0x03,   # error response
-        response_data = SCOM_ERROR_CODES.WRITE_PROPERTY_FAILED,
-        expected_value = None,
-        expected_exception_type = XcomApiResponseIsError,
-    )
-
-
-@pytest.mark.asyncio()
-async def test_update_param_timeout(context, unused_tcp_port):
-
-    await context.run_request_response(
-        port = unused_tcp_port,
-        test_nr = 1107,
-        test_dest = 100,
-        test_value_update = 4.0,
-        expected_service_id = SCOM_SERVICE.WRITE,
-        expected_object_type = SCOM_OBJ_TYPE.PARAMETER,
-        expected_object_id = 1107,
-        expected_property_id = SCOM_QSP_ID.UNSAVED_VALUE,
-        response_flags = 0x00,   # no response
-        response_data = b'', # empty data means success
-        expected_value = None,
-        expected_exception_type = XcomApiTimeoutException,
-    )
-
+    # Wait for server to finish and check the handling of the received response
+    if exp_except == None:
+        value = await task_server
+        assert value == exp_value
+    else:
+        with pytest.raises(exp_except):
+            await task_server
