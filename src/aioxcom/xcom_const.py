@@ -255,4 +255,4 @@ class SCOM_ERROR_CODES:
             if type(key) is str and type(val) is bytes and val==data:
                 return key
 
-        return f"unknown {data.hex()}"
+        return f"unknown error '{data.hex()}'"

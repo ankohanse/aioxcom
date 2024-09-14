@@ -148,7 +148,7 @@ class XcomApiBase:
                     return None
 
                 if response.isError():
-                    msg = SCOM_ERROR_CODES.getByData(response.frame_data.service_data.property_data)
+                    msg = response.getError()
                     raise XcomApiResponseIsError(f"Response package for {parameter.nr}:{dstAddr} contains message: '{msg}'")
 
                 # Unpack the response value
@@ -243,7 +243,7 @@ class XcomApiBase:
                     return None
 
                 if response.isError():
-                    msg = SCOM_ERROR_CODES.getByData(response.frame_data.service_data.property_data)
+                    msg = response.getError()
                     raise XcomApiResponseIsError(f"Response package for {parameter.nr}:{dstAddr} contains message: '{msg}'")
 
                 # Success
@@ -313,6 +313,7 @@ class XcomApiTcp(XcomApiBase):
             # Close the writer; we do not need to close the reader
             if self._writer:
                 self._writer.close()
+                await self._writer.wait_closed()
     
         except Exception as e:
             _LOGGER.warning(f"Exception during closing of Xcom writer: {e}")
@@ -333,12 +334,12 @@ class XcomApiTcp(XcomApiBase):
         _LOGGER.info(f"Stopped Xcom TCP server")
     
 
-    async def _client_connected_callback(self, reader, writer):
+    async def _client_connected_callback(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
         """
         Callback called once the Xcom Client connects to our Server
         """
-        self._reader = reader
-        self._writer = writer
+        self._reader: asyncio.StreamReader = reader
+        self._writer: asyncio.StreamWriter = writer
         self._connected = True
 
         peername = self._writer.get_extra_info("peername")

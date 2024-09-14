@@ -8,6 +8,7 @@
 ##
 
 
+import asyncio
 import logging
 import struct
 from io import BufferedWriter, BufferedReader, BytesIO
@@ -322,7 +323,7 @@ class XcomPackage:
     frame_data: XcomFrame
 
     @staticmethod
-    async def parse(f: BufferedReader):
+    async def parse(f: asyncio.StreamReader):
         # package sometimes starts with 0xff
         skip = -1
         raw_sb = b''
@@ -344,9 +345,12 @@ class XcomPackage:
         return XcomPackage(header, frame)
 
     @staticmethod
-    def parseBytes(buf: bytes):
-        return XcomPackage.parse(BytesIO(buf))
+    async def parseBytes(buf: bytes):
+        reader = asyncio.StreamReader()
+        reader.feed_data(buf)
 
+        return await XcomPackage.parse(reader)
+    
     @staticmethod
     def genPackage(service_id: bytes,
             object_type: bytes,
@@ -361,7 +365,6 @@ class XcomPackage:
         header = XcomHeader(src_addr, dst_addr, len(frame))
 
         return XcomPackage(header, frame)
-
 
     def __init__(self, header: XcomHeader, frame_data: XcomFrame):
         self.header = header
@@ -391,10 +394,7 @@ class XcomPackage:
 
     def getError(self) -> str:
         if self.isError():
-            return SCOM_ERROR_CODES.get(
-                self.frame_data.service_data.property_data,
-                "UNKNOWN ERROR"
-            )
+            return SCOM_ERROR_CODES.getByData(self.frame_data.service_data.property_data)
         return None
  
     def __str__(self) -> str:
