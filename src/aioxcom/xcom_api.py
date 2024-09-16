@@ -163,7 +163,7 @@ class XcomApiBase:
                 last_exception = e
 
         if last_exception:
-            raise last_exception
+            raise last_exception from None
 
                                          
     async def requestValues(self, props: list[tuple[XcomDatapoint, int | None]], retries = None, timeout = None):
@@ -197,7 +197,7 @@ class XcomApiBase:
                 last_exception = e
 
         if last_exception:
-            raise last_exception
+            raise last_exception from None
 
 
     async def updateValue(self, parameter: XcomDatapoint, value, dstAddr = 100, retries = None, timeout = None):
@@ -253,7 +253,7 @@ class XcomApiBase:
                 last_exception = e
 
         if last_exception:
-            raise last_exception
+            raise last_exception from None
     
 
     async def _sendPackage(self, request: XcomPackage, timeout=REQ_TIMEOUT) -> XcomPackage | None:
