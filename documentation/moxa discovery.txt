@@ -1,0 +1,91 @@
+note:
+192.168.127.254 is the Xcom-LAN / Moxa device default IP address if using DHCP instread of STATIC
+
+
+legend:
+192.168.88.100 is pc running the Moxa Device Search Utilily	(hex: C0 a8 58 64)
+192.168.88.250 is the Xcom-LAN / Moxa device			(hex: C0 a8 58 fa)
+255.255.255.255 is broadcast destination for the entire LAN network
+
+Behavior detected:
+
+1x broadcasts to
+udp 192.168.88.100:p1 to 255.255.255.255:29168  with data 01000008 00000000 (len=8)
+udp 192.168.88.100:p2 to 255.255.255.255:4800   with data 01000008 00000000 (len=8)
+udp 192.168.88.100:p3 to 255.255.255.255:1029   with data 49000006 0000 (len=6)
+
+Response
+udp 192.168.88.250:4800 to 255.255.255.255:p2	with src:00:90:e8:3c:f8:7e and data 81000018 00000000 00510180 1a510090 e83cf87e c0a858fa (length=24 / 18hex)
+first 3 bytes of src indicates 'MoxaTechnolo' 
+last 4 bytes of data are Xcom-LAN ip addr
+
+at this point the Search Utility has already found the Moxa Nport device, but keeps searching
+several repeated UDP broadcasts to
+udp 192.168.88.100:p1 to 255.255.255.255:29168  with data 01000008 00000000 (len=8)
+udp 192.168.88.100:p2 to 255.255.255.255:4800   with data 01000014 00000000 00510180 1a510090 e83cf87e (len=20 / 14 hex)
+udp 192.168.88.100:p3 to 255.255.255.255:1029   with data 4900000a 00001a51 0000 (len=10 / 0a hex)
+
+
+Next follows a direct (non broadcast) handshake between Moxa and calling compute
+Response
+udp 192.168.88.250:4800 to 192.168.88.100:p2	with src:00:90:e8:3c:f8:7e and data 96000024 00000000 00510180 1a510090 e83cf87e 00310101 01000200 d2070000 00000301 (length=36 / 24 hex)
+
+udp 192.168.88.100:p2 to 192.168.88.250:4800    with data 26000016 00000000 00510180 1a510090 e83cf87e 0002 (len=22 / 16 hex)
+
+udp 192.168.88.250:4800 to 192.168.88.100:p2	with src:00:90:e8:3c:f8:7e and data a6000028 00000000 00510180 1a510090 e83cf87e 01000000 00000100 c0a858fa ffffff00 c0a85801 (len=40 / 28 hex)
+
+udp 192.168.88.100:p2 to 192.168.88.250:4800    with data 10000014 00000000 00510180 1a510090 e83cf87e (len=20 / 14 hex)
+
+udp 192.168.88.250:4800 to 192.168.88.100:p2	with src:00:90:e8:3c:f8:7e and data 9000003c 00000000 00510180 1a510090 e83cf87e 58636f6d 2d4c414e 00a858fa ffffff00 c0a85801 ee77bbef ed33f3cc ef1337dc cc7f3ecc ef33bfdf (len=60 / 3c hex)
+
+
+some of the values in the data:
+4th byte is data length
+0090 e83cf87e is the MAC address of my Xcom-LAN / Moxa, 0090e8 is probably used for all moxa devices, other 3 differ per device
+
+
+
+---------------
+Other options
+
+- TCP connect to port 80 (config website, can be disabled)
+  Look for response header 'Server: MoxaHTTP/2.2'
+  or <HTML><HEAD><TITLE>Nport Web Console</TITLE></HEAD/></HTML>
+
+  note: HTTPS (port 443) seems not supported
+
+
+- telnet to 192.168.88.x	(can be disabled)
+  check if response contains 'NPort'
+
+-----------------------------------------------------------------------------
+Model name       : NPort 5110A
+MAC address      : 00:90:E8:3C:F8:7E
+Serial No.       : 2002
+Firmware version : 1.1.31 Build 13111911
+System uptime    : 21 days, 15h:58m:07s
+-----------------------------------------------------------------------------
+<< Main menu >>
+  (1) Basic settings
+  (2) Network settings
+  (3) Serial settings
+  (4) Operating settings
+  (5) Accessible IP settings
+  (6) Auto warning settings
+  (7) Monitor
+  (8) Ping
+  (9) Change password
+  (a) Load factory default
+  (v) View settings
+  (s) Save/Restart
+  (q) Quit
+
+Key in your selection:
+
+
+
+- SNMP	(can be disabled)
+
+
+
+

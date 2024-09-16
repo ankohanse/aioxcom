@@ -87,7 +87,7 @@ class XcomDeviceFamilies:
     RCC = XcomDeviceFamily(
         "rcc", "rcc",
         "RCC or Xcom-LAN", 
-        501,                   # addr multicast to all devices (write only)
+        500,                   # addr multicast to all devices (write only)
         501, 501,              # addr devices,  start to end
         5000, 5999,            # nr for params, start to end
         0, 0,                  # nr for infos,  start to end

@@ -1,8 +1,12 @@
 """xcom_api.py: communication api to Studer Xcom via LAN."""
 
-from dataclasses import dataclass
+import ipaddress
+import httpx
 import logging
+import os
 import struct
+
+from dataclasses import dataclass
 
 from .xcom_api import (
     XcomApiBase,
@@ -17,6 +21,9 @@ from .xcom_families import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("httpcore").propagate = False
 
 
 @dataclass
@@ -160,6 +167,42 @@ class XcomDiscover:
         
         bytes = struct.pack(">H", int(msb)) + struct.pack(">H", int(lsb))
         return bytes.hex(' ',4).upper()
+
+
+    @staticmethod
+    async def discoverMoxaWebConfig() -> str:
+        """
+        Discover if Moxa Web Config page can be found on the local network
+        """
+
+        # Find all device IP addresses to check
+        devices: list[str] = [
+            "192.168.127.254"   # default if using static address
+        ]
+        for line in os.popen('arp -a'):     # arp seems to be available on Linux, Windows and Pi
+            try:
+                device = line.strip('?').split()[0].strip('()')
+                ip = ipaddress.ip_address(device)
+                devices.append(str(ip))
+            except:
+                pass
+
+        # Iterate all devices and check for Moxa Web Config page
+        async with httpx.AsyncClient() as client:
+            for device in devices:
+                try:
+                    url = f"http://{device}"
+                    _LOGGER.debug(f"trying {url}")
+
+                    rsp = await client.get(url)
+                    if rsp and rsp.is_success:
+                        if rsp.headers.get("Server", "").startswith("Moxa"):
+                            return url
+                except:
+                    pass
+                
+        return None
+
 
 
 
