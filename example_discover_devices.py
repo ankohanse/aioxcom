@@ -25,6 +25,10 @@ async def main():
         for device in devices:
             logger.info(f"Discovered {device}")
 
+        # Log diagnostic information
+        diag = await api.getDiagnostics()
+        logger.info(f"Diagnostics: {diag}")
+
     finally:
         await api.stop()
         dataset = None

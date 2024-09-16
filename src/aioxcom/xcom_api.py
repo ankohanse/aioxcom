@@ -4,6 +4,8 @@ import asyncio
 import logging
 import socket
 
+from datetime import datetime, timedelta
+
 from .xcom_const import (
     FORMAT,
     OBJ_TYPE,
@@ -14,20 +16,15 @@ from .xcom_const import (
 )
 from .xcom_protocol import (
     XcomPackage,
-    XcomHeader,
-    XcomFrame,
     XcomData,
     XcomDataMultiInfoReq,
     XcomDataMultiInfoReqItem,
     XcomDataMultiInfoRsp,
     XcomDataMultiInfoRspItem,
     XcomDataMessageRsp,
-    checksum,
 )
 from .xcom_datapoints import (
     XcomDatapoint,
-    XcomDataset,
-    XcomDatapointUnknownException,
 )
 
 from .xcom_families import (
@@ -40,7 +37,7 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_PORT = 4001
 START_TIMEOUT = 30 # seconds
 STOP_TIMEOUT = 5
-REQ_TIMEOUT = 2
+REQ_TIMEOUT = 3
 REQ_RETRIES = 3
 
 
@@ -72,6 +69,10 @@ class XcomApiBase:
         """
         self._started = False
         self._connected = False
+
+        # Diagnostics gathering
+        self._diag_retries = {}
+        self._diag_durations = {}
 
 
     async def start(self, timeout=START_TIMEOUT) -> bool:
@@ -132,6 +133,8 @@ class XcomApiBase:
 
         for retry in range(retries):
             try:
+                ts_start = datetime.now()
+                
                 # Compose the request and send it
                 request: XcomPackage = XcomPackage.genPackage(
                     service_id = SCOM_SERVICE.READ,
@@ -142,6 +145,10 @@ class XcomApiBase:
                     dst_addr = dstAddr
                 )
                 response = await self._sendPackage(request, timeout=timeout)
+
+                # Update diagnostics
+                ts_end = datetime.now()
+                await self._addDiagnostics(retries = retry, duration = ts_end-ts_start)
 
                 # Check the response
                 if response is None:
@@ -161,6 +168,9 @@ class XcomApiBase:
                     
             except Exception as e:
                 last_exception = e
+
+        # Update diagnostics in case of timeout of each retry
+        await self._addDiagnostics(retries = retry)
 
         if last_exception:
             raise last_exception from None
@@ -182,6 +192,8 @@ class XcomApiBase:
 
         for retry in range(retries):
             try:
+                ts_start = datetime.now()
+                
                 # Compose the request and send it
                 request: XcomPackage = XcomPackage.genPackage(
                     service_id = SCOM_SERVICE.READ,
@@ -192,9 +204,16 @@ class XcomApiBase:
                     dst_addr = 101
                 )
                 await self._sendPackage(request, timeout=timeout)
+
+                # Update diagnostics
+                ts_end = datetime.now()
+                await self._addDiagnostics(retries = retry, duration = ts_end-ts_start)
             
             except Exception as e:
                 last_exception = e
+
+        # Update diagnostics in case of timeout of each retry
+        await self._addDiagnostics(retries = retry)
 
         if last_exception:
             raise last_exception from None
@@ -228,6 +247,8 @@ class XcomApiBase:
 
         for retry in range(retries):
             try:
+                ts_start = datetime.now()
+                
                 request: XcomPackage = XcomPackage.genPackage(
                     service_id = SCOM_SERVICE.WRITE,
                     object_type = SCOM_OBJ_TYPE.PARAMETER,
@@ -237,6 +258,10 @@ class XcomApiBase:
                     dst_addr = dstAddr
                 )
                 response = await self._sendPackage(request, timeout=timeout)
+
+                # Update diagnostics
+                ts_end = datetime.now()
+                await self._addDiagnostics(retries = retry, duration = ts_end-ts_start)
 
                 # Check the response
                 if response is None:
@@ -252,12 +277,39 @@ class XcomApiBase:
             except Exception as e:
                 last_exception = e
 
+        # Update diagnostics in case of timeout of each retry
+        await self._addDiagnostics(retries = retry)
+
         if last_exception:
             raise last_exception from None
     
 
     async def _sendPackage(self, request: XcomPackage, timeout=REQ_TIMEOUT) -> XcomPackage | None:
         raise NotImplementedError()
+    
+
+    async def _addDiagnostics(self, retries: int = None, duration: timedelta = None):
+        if retries is not None:
+            if retries not in self._diag_retries:
+                self._diag_retries[retries] = 1
+            else:
+                self._diag_retries[retries] += 1
+
+        if duration is not None:
+            duration = round(duration.total_seconds(), 1)
+            if duration not in self._diag_durations:
+                self._diag_durations[duration] = 1
+            else:
+                self._diag_durations[duration] += 1
+
+
+    async def getDiagnostics(self):
+        return {
+            "statistics": {
+                "retries": dict(sorted(self._diag_retries.items())),
+                "durations": dict(sorted(self._diag_durations.items())),
+            }
+        }
 
 
 ##
