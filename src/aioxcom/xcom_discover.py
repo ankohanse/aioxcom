@@ -170,28 +170,27 @@ class XcomDiscover:
 
 
     @staticmethod
-    async def discoverMoxaWebConfig() -> str:
+    async def discoverMoxaWebConfig(hint: str = None) -> str:
         """
         Discover if Moxa Web Config page can be found on the local network
         """
 
         # Find all device IP addresses to check
-        devices: list[str] = [
-            "192.168.127.254"   # default if using static address
-        ]
+        devices: list[str] = [hint] if hint else []
+        devices.append("http://192.168.127.254")   # default if using static address
+
         for line in os.popen('arp -a'):     # arp seems to be available on Linux, Windows and Pi
             try:
                 device = line.strip('?').split()[0].strip('()')
                 ip = ipaddress.ip_address(device)
-                devices.append(str(ip))
+                devices.append(f"http://{str(ip)}")
             except:
                 pass
 
         # Iterate all devices and check for Moxa Web Config page
         async with httpx.AsyncClient() as client:
-            for device in devices:
+            for url in devices:
                 try:
-                    url = f"http://{device}"
                     _LOGGER.debug(f"trying {url}")
 
                     rsp = await client.get(url)
