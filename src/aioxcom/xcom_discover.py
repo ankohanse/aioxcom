@@ -1,6 +1,7 @@
 """xcom_api.py: communication api to Studer Xcom via LAN."""
 
 import ipaddress
+import ssl
 import httpx
 import logging
 import os
@@ -188,7 +189,7 @@ class XcomDiscover:
                 pass
 
         # Iterate all devices and check for Moxa Web Config page
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(verify=False) as client:  # No need to SSL verify olain HTTP GET calls
             for url in devices:
                 try:
                     _LOGGER.debug(f"trying {url}")
