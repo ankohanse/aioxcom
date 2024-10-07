@@ -14,6 +14,7 @@ from .xcom_const import (
     LEVEL,
     FORMAT,
     OBJ_TYPE,
+    VOLTAGE,
 )
 
 
@@ -118,7 +119,7 @@ class XcomDataset:
         # start with the 240v list as base
         datapoints = datapoints_240vac
 
-        if voltage == "120 Vac":
+        if voltage == VOLTAGE.AC120:
             # Merge the 120v list into the 240v one by replacing duplicates. This maintains the order of menu items
             for dp120 in datapoints_120vac:
                 # already in result?
@@ -128,7 +129,7 @@ class XcomDataset:
 
             _LOGGER.info(f"Using {len(datapoints)} datapoints for 120 Vac")
 
-        elif voltage == "240 Vac":
+        elif voltage == VOLTAGE.AC240:
             _LOGGER.info(f"Using {len(datapoints)} datapoints for 240 Vac")
 
         else:
