@@ -28,8 +28,15 @@ class ValueTuple:
 
 
 class VOLTAGE(StrEnum):
-    AC120 = "240 Vac"
+    AC120 = "120 Vac"
     AC240 = "240 Vac"
+
+    @staticmethod
+    def from_str(s: str):
+        match s.upper():
+            case '120 VAC' | '120_VAC': return VOLTAGE.AC120
+            case '240 VAC' | '240_VAC': return VOLTAGE.AC240
+            case _: raise Exception(f"Unknown voltage: '{s}'")
 
 
 ### data types
