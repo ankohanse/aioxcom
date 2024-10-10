@@ -1,5 +1,6 @@
 """xcom_api.py: communication api to Studer Xcom via LAN."""
 
+import asyncio
 import ipaddress
 import ssl
 import httpx
@@ -177,34 +178,40 @@ class XcomDiscover:
         """
 
         # Find all device IP addresses to check
-        devices: list[str] = [hint] if hint else []
-        devices.append("http://192.168.127.254")   # default if using static address
+        urls: list[str] = [hint] if hint else []
+        urls.append("http://192.168.127.254")   # default if using static address
 
         for line in os.popen('arp -a'):     # arp seems to be available on Linux, Windows and Pi
             try:
                 device = line.strip('?').split()[0].strip('()')
                 ip = ipaddress.ip_address(device)
-                devices.append(f"http://{str(ip)}")
+                urls.append(f"http://{str(ip)}")
             except:
                 pass
 
-        # Iterate all devices and check for Moxa Web Config page
-        async with httpx.AsyncClient(verify=False) as client:  # No need to SSL verify olain HTTP GET calls
-            for url in devices:
-                try:
-                    _LOGGER.debug(f"trying {url}")
+        # Parallel check for Moxa Web Config page on all found device url's
+        async def check_url(client, url) -> str|None:
+            _LOGGER.debug(f"trying {url}")
+            rsp = await client.get(url)
+            if rsp and rsp.is_success and rsp.headers.get("Server", "").startswith("Moxa"):
+                return url
+            else:
+                return None
 
-                    rsp = await client.get(url)
-                    if rsp and rsp.is_success:
-                        if rsp.headers.get("Server", "").startswith("Moxa"):
-                            return url
+        async with httpx.AsyncClient(verify=False) as client:  # No need to SSL verify plain HTTP GET calls
+            tasks = [asyncio.create_task(check_url(client, url)) for url in urls]
+            for task in asyncio.as_completed(tasks):
+                try:
+                    url = await task
+                    if url is not None:
+                        # Cleanup remaining tasks and return found url
+                        for other_task in tasks:
+                            other_task.cancel()
+
+                        _LOGGER.debug(f"Found Moxa Web Config url: {url}")
+                        return url
                 except:
                     pass
                 
         return None
-
-
-
-
-
-
+        
