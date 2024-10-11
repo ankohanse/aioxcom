@@ -2,6 +2,8 @@ import asyncio
 import logging
 import sys
 
+from datetime import datetime
+
 from aioxcom import XcomDiscover
 
 # Setup logging to StdOut
