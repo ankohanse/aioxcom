@@ -48,7 +48,7 @@ class XcomDatapoint:
         pnr = d.get('pnr', None)
         nr  = d.get('nr', None)
         name = d.get('name', None)
-        abbr = d.get('short', None)
+        short = d.get('short', None)
         unit = d.get('unit', None)
         fmt = d.get('fmt', None)
         dft = d.get('def', None)
@@ -66,17 +66,22 @@ class XcomDatapoint:
 
         if type(nr) is not int:
             return None
-
-        lvl = LEVEL.from_str(lvl)
-        fmt = FORMAT.from_str(fmt)
         
+        family_id = str(fam)
+        level = LEVEL.from_str(str(lvl))
+        parent = int(pnr)
+        number = int(nr)
         name = str(name).strip()
-        dft = float(dft) if (type(dft) is int or type(dft) is float) else "S" if (dft=="S") else None
-        min = float(min) if (type(min) is int or type(min) is float) else "S" if (dft=="S") else None
-        max = float(max) if (type(max) is int or type(max) is float) else "S" if (dft=="S") else None
-        inc = float(inc) if (type(inc) is int or type(inc) is float) else "S" if (dft=="S") else None
+        abbr = str(short)
+        unit = str(unit)
+        format = FORMAT.from_str(str(fmt))
+        default = float(dft) if (type(dft) is int or type(dft) is float) else "S" if (dft=="S") else None
+        minimum = float(min) if (type(min) is int or type(min) is float) else "S" if (dft=="S") else None
+        maximum = float(max) if (type(max) is int or type(max) is float) else "S" if (dft=="S") else None
+        increment = float(inc) if (type(inc) is int or type(inc) is float) else "S" if (dft=="S") else None
+        options = opt if type(opt) is dict else None
             
-        return XcomDatapoint(fam, lvl, pnr, nr, name, abbr, unit, fmt, dft, min, max, inc, opt)
+        return XcomDatapoint(family_id, level, parent, number, name, abbr, unit, format, default, minimum, maximum, increment, options)
         
     @property
     def obj_type(self):

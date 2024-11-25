@@ -22,6 +22,15 @@ async def test_nr():
     assert param.format == FORMAT.FLOAT
     assert param.obj_type == OBJ_TYPE.PARAMETER
 
+    param = dataset.getByNr(1552)
+    assert param.family_id == "xt"
+    assert param.nr == 1552
+    assert param.format == FORMAT.LONG_ENUM
+    assert param.obj_type == OBJ_TYPE.PARAMETER
+    assert param.options != None
+    assert type(param.options) is dict
+    assert len(param.options) == 3
+
     param = dataset.getByNr(3000)
     assert param.family_id == "xt"
     assert param.nr == 3000
