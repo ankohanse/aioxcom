@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 from .xcom_const import (
     FORMAT,
+    LEVEL,
     OBJ_TYPE,
     SCOM_OBJ_TYPE,
     SCOM_SERVICE,
@@ -232,6 +233,10 @@ class XcomApiBase:
         # Sanity check: the parameter/datapoint must have obj_type == OBJ_TYPE.PARAMETER
         if parameter.obj_type != OBJ_TYPE.PARAMETER:
             _LOGGER.warn(f"Ignoring attempt to update readonly infos value {parameter}")
+            return None
+
+        if parameter.level == LEVEL.VO:
+            _LOGGER.warn(f"Ignoring attempt to update view-only params value {parameter}")
             return None
 
         if type(dstAddr) is str:

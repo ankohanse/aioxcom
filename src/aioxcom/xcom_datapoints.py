@@ -88,7 +88,7 @@ class XcomDatapoint:
         if self.level in [LEVEL.INFO]:
             return OBJ_TYPE.INFO
 
-        if self.level in [LEVEL.BASIC, LEVEL.EXPERT, LEVEL.INST, LEVEL.QSP]:
+        if self.level in [LEVEL.VO, LEVEL.BASIC, LEVEL.EXPERT, LEVEL.INST, LEVEL.QSP]:
             return OBJ_TYPE.PARAMETER
             
         _LOGGER.debug(f"Unknown obj_type for datapoint {self.nr} with level {self.level} and format {self.format}")

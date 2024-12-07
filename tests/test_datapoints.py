@@ -43,6 +43,12 @@ async def test_nr():
     assert param.format == FORMAT.FLOAT
     assert param.obj_type == OBJ_TYPE.INFO
 
+    param = dataset.getByNr(5012, "rcc")
+    assert param.family_id == "rcc"
+    assert param.nr == 5012
+    assert param.format == FORMAT.INT32
+    assert param.obj_type == OBJ_TYPE.PARAMETER
+
     with pytest.raises(XcomDatapointUnknownException):
         param = dataset.getByNr(9999)
 

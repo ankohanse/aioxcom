@@ -46,7 +46,7 @@ class LEVEL(IntEnum):
     EXPERT = 0x0020
     INST   = 0x0030 # Installer
     QSP    = 0x0040 # Qualified Service Person
-    VO     = 0xFFFF # View Only? Used for param 5012, marked as 'not supported'
+    VO     = 0xFFFF # View Only. Used for param 5012
 
     @staticmethod
     def from_str(s: str):
