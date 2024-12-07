@@ -93,6 +93,27 @@ class XcomDatapoint:
             
         _LOGGER.debug(f"Unknown obj_type for datapoint {self.nr} with level {self.level} and format {self.format}")
         return OBJ_TYPE.INFO
+    
+    def enum_value(self, key):
+        if self.format not in [FORMAT.LONG_ENUM, FORMAT.SHORT_ENUM]:
+            return None
+        
+        key = str(key)
+        if not isinstance(self.options, dict) or key not in self.options:
+            return key
+        else:
+            return self.options[key]
+    
+    def enum_key(self, value):
+        if self.format not in [FORMAT.LONG_ENUM, FORMAT.SHORT_ENUM]:
+            return None
+        
+        if not isinstance(self.options, dict) or value not in self.options.values():
+            return None
+        else:
+            key = next((key for key,val in self.options.items() if val==value), None)
+            return int(key)
+
 
 
 class XcomDataset:

@@ -235,10 +235,6 @@ class XcomApiBase:
             _LOGGER.warn(f"Ignoring attempt to update readonly infos value {parameter}")
             return None
 
-        if parameter.level == LEVEL.VO:
-            _LOGGER.warn(f"Ignoring attempt to update view-only params value {parameter}")
-            return None
-
         if type(dstAddr) is str:
             dstAddr = XcomDeviceFamilies.getAddrByCode(dstAddr)
 

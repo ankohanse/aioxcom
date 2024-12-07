@@ -41,22 +41,22 @@ class VOLTAGE(StrEnum):
 
 ### data types
 class LEVEL(IntEnum):
-    INFO   = 0x0000
+    INFO   = 0x0001
+    VO     = 0x0000 # View Only. Used for param RCC 5012 (User Level)
     BASIC  = 0x0010
     EXPERT = 0x0020
     INST   = 0x0030 # Installer
     QSP    = 0x0040 # Qualified Service Person
-    VO     = 0xFFFF # View Only. Used for param 5012
 
     @staticmethod
     def from_str(s: str):
         match s.upper():
             case 'INFO': return LEVEL.INFO
+            case 'VO' | 'V.O.': return LEVEL.VO
             case 'BASIC': return LEVEL.BASIC
             case 'EXPERT': return LEVEL.EXPERT
             case 'INST' | 'INST.': return LEVEL.INST
             case 'QSP': return LEVEL.QSP
-            case 'VO' | 'V.O.': return LEVEL.VO
             case _: raise Exception(f"Unknown level: '{s}'")
 
     def __str__(self):

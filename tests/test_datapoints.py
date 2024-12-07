@@ -46,14 +46,36 @@ async def test_nr():
     param = dataset.getByNr(5012, "rcc")
     assert param.family_id == "rcc"
     assert param.nr == 5012
-    assert param.format == FORMAT.INT32
+    assert param.format == FORMAT.LONG_ENUM
     assert param.obj_type == OBJ_TYPE.PARAMETER
+    assert param.options != None
+    assert type(param.options) is dict
 
     with pytest.raises(XcomDatapointUnknownException):
         param = dataset.getByNr(9999)
 
     with pytest.raises(XcomDatapointUnknownException):
         param = dataset.getByNr(3000, "bsp")
+
+
+@pytest.mark.asyncio
+async def test_enum():
+    dataset = await XcomDataset.create(VOLTAGE.AC240)
+
+    param = dataset.getByNr(1552)
+    assert param.options != None
+    assert type(param.options) is dict
+    assert len(param.options) == 3
+
+    assert param.enum_value(1) == "Slow"
+    assert param.enum_value("1") == "Slow"
+    assert param.enum_value(0) == "0"
+    assert param.enum_value("0") == "0"
+
+    assert param.enum_key("Slow") == 1
+    assert param.enum_key("Unknown") == None
+    assert param.enum_key(1) == None
+    assert param.enum_key("1") == None
 
 
 @pytest.mark.asyncio

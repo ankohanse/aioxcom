@@ -33,7 +33,7 @@ async def main():
 
         # Retrieve param #5012 from RCC (User Level)
         value = await api.requestValue(param_5012, "RCC")    # rcc address range is only 501, or use "RCC"
-        logger.info(f"RCC 5012: {value} {param_5012.unit} ({param_5012.name})")
+        logger.info(f"RCC 5012: {param_5012.enum_value(value)} ({param_5012.name})")
 
         # Retrieve and Update param 1107 on the first Xtender (Maximum current of AC source)
         value = await api.requestValue(param_1107, "XT1")
