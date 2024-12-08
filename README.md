@@ -105,9 +105,10 @@ A complete list of all available device families and their address range can be 
 # Param writes to device RAM
 
 When the value of a Studer param is changed via this library, these are written via Xcom to the affected device. 
-Changes are stored in the device's RAM memory, not in its flash memory as you can only write to flash a limited number of time over its lifetime.
+Changes are stored in the device's RAM memory, not in its flash memory as you can only write to flash a limited number of times over its lifetime.
 
-However, reading back the value from the entity will always be from flash. As a result, the change to the entity value is not visible. You can only tell from the behavior of the PV system that the Studer param was indeed changed.  
+However, reading back the value from the entity will always be from flash. As a result, the change to the entity value is not visible in the RCC or remote console. You can only tell from the behavior of the PV system that the Studer param was indeed changed.  
+  
 After a restart/reboot of the PV system the system will revert to the value from Flash. So you may want to periodically repeat the write of changed param values via an automation.
 
 **IMPORTANT**:
