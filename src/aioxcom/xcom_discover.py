@@ -69,7 +69,7 @@ class XcomDiscover:
 
                 device_code = family.getCode(device_addr)
 
-                # Send the test request to the device. This will return False in case:
+                # Send the test request to the device. This will return None in case:
                 # - the device does not exist (DEVICE_NOT_FOUND)
                 # - the device does not support the param (INVALID_DATA), used to distinguish BSP from BMS
                 try:
