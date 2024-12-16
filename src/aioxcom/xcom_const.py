@@ -8,25 +8,6 @@ from dataclasses import dataclass
 from enum import IntEnum, StrEnum
 
 
-@dataclass
-class ValueTuple:
-    id: int
-    value: str
-
-    def __eq__(self, __o: object) -> bool:
-        if __o.__class__ is self.__class__:
-            return __o.id == self.id
-        return __o == self.id
-
-    def __ne__(self, __o: object) -> bool:
-        if __o.__class__ is self.__class__:
-            return __o.id != self.id
-        return __o != self.id
-
-    def __str__(self) -> str:
-        return self.value
-
-
 class VOLTAGE(StrEnum):
     AC120 = "120 Vac"
     AC240 = "240 Vac"
@@ -195,33 +176,6 @@ class SCOM_AGGREGATION_TYPE:
 
 # SCOM_ADDRESSES
 SCOM_ADDR_BROADCAST = 0
-
-### operating modes (11016)
-MODE_NIGHT      = ValueTuple(0, "MODE_NIGHT")
-MODE_STARTUP    = ValueTuple(1, "MODE_STARTUP")
-MODE_CHARGER    = ValueTuple(3, "MODE_CHARGER")
-MODE_SECURITY   = ValueTuple(5, "MODE_SECURITY")
-MODE_OFF        = ValueTuple(6, "MODE_OFF")
-MODE_CHARGE     = ValueTuple(8, "MODE_CHARGE")
-MODE_CHARGE_V   = ValueTuple(9, "MODE_CHARGE_V")
-MODE_CHARGE_I   = ValueTuple(10, "MODE_CHARGE_I")
-MODE_CHARGE_T   = ValueTuple(11, "MODE_CHARGE_T")
-
-MODE_CHARGING = (
-    MODE_CHARGE,
-    MODE_CHARGE_V,
-    MODE_CHARGE_I,
-    MODE_CHARGE_T
-)
-
-### battey cycle phase (11038)
-PHASE_BULK      = ValueTuple(0, "PHASE_BULK")
-PHASE_ABSORPT   = ValueTuple(1, "PHASE_ABSORPT")
-PHASE_EQUALIZE  = ValueTuple(2, "PHASE_EQUALIZE")
-PHASE_FLOATING  = ValueTuple(3, "PHASE_FLOATING")
-PHASE_R_FLOAT   = ValueTuple(6, "PHASE_R_FLOAT")
-PHASE_PER_ABS   = ValueTuple(7, "PHASE_PER_ABS")
-
 
 ### error codes
 class SCOM_ERROR_CODES:
