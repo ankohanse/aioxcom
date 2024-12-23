@@ -189,12 +189,11 @@ class XcomDiscover:
         # Define helper function to check for Moxa Web Config page
         async def check_url(session, url:str) -> str|None:
             _LOGGER.debug(f"trying {url}")
-            rsp = await session.get(url)
-
-            if rsp and rsp.ok and rsp.headers.get("Server", "").startswith("Moxa"):
-                return url
-            else:
-                return None
+            async with session.get(url) as rsp:
+                if rsp and rsp.ok and rsp.headers.get("Server", "").startswith("Moxa"):
+                    return url
+                else:
+                    return None
 
         # Parallel check for Moxa Web Config page on all found device url's
         # No need to SSL verify plain HTTP GET calls, this also keeps Home Assistant happy
