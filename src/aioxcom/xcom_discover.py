@@ -188,7 +188,7 @@ class XcomDiscover:
 
         # Define helper function to check for Moxa Web Config page
         async def check_url(session, url:str) -> str|None:
-            _LOGGER.debug(f"trying {url}")
+            _LOGGER.info(f"trying {url}")
             async with session.get(url) as rsp:
                 if rsp and rsp.ok and rsp.headers.get("Server", "").startswith("Moxa"):
                     return url
@@ -209,7 +209,7 @@ class XcomDiscover:
                         for other_task in tasks:
                             other_task.cancel()
 
-                        _LOGGER.debug(f"Found Moxa Web Config url: {url}")
+                        _LOGGER.info(f"Found Moxa Web Config url: {url}")
                         return url
                 except:
                     pass
