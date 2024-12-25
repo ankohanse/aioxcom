@@ -13,11 +13,15 @@ class VOLTAGE(StrEnum):
     AC240 = "240 Vac"
 
     @staticmethod
-    def from_str(s: str):
+    def from_str(s: str, default: str|None = None):
         match s.upper():
             case '120 VAC' | '120_VAC': return VOLTAGE.AC120
             case '240 VAC' | '240_VAC': return VOLTAGE.AC240
-            case _: raise Exception(f"Unknown voltage: '{s}'")
+            case _: 
+                if default is not None:
+                    return default
+                else:
+                    raise Exception(f"Unknown voltage: '{s}'")
 
 
 ### data types
@@ -30,7 +34,7 @@ class LEVEL(IntEnum):
     QSP    = 0x0040 # Qualified Service Person
 
     @staticmethod
-    def from_str(s: str):
+    def from_str(s: str, default: int|None = None):
         match s.upper():
             case 'INFO': return LEVEL.INFO
             case 'VO' | 'V.O.': return LEVEL.VO
@@ -38,7 +42,11 @@ class LEVEL(IntEnum):
             case 'EXPERT': return LEVEL.EXPERT
             case 'INST' | 'INST.': return LEVEL.INST
             case 'QSP': return LEVEL.QSP
-            case _: raise Exception(f"Unknown level: '{s}'")
+            case _: 
+                if default is not None:
+                    return default
+                else:
+                    raise Exception(f"Unknown level: '{s}'")
 
     def __str__(self):
         return self.name
@@ -61,7 +69,7 @@ class FORMAT(StrEnum):
     INVALID    = "INVALID"      # n.a.
 
     @staticmethod
-    def from_str(s: str):
+    def from_str(s: str, default: str|None = None):
         match s.upper():
             case 'BOOL': return FORMAT.BOOL
             case 'FORMAT': return FORMAT.FORMAT
@@ -75,7 +83,11 @@ class FORMAT(StrEnum):
             case 'BYTES': return FORMAT.BYTES
             case 'MENU' | 'ONLY_LEVEL' | 'ONLY LEVEL': return FORMAT.MENU
             case 'NOT SUPPORTED': return FORMAT.INVALID
-            case _: raise Exception(f"Unknown format: '{s}'")
+            case _: 
+                if default is not None:
+                    return default
+                else:
+                    raise Exception(f"Unknown format: '{s}'")
 
     def __str__(self):
         return self.name

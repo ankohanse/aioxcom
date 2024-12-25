@@ -1,6 +1,6 @@
 [project]
 name = "aioxcom"
-version = "1.6.3"
+version = "1.7.0"
 authors = [
   { name="Anko Hanse", email="anko_hanse@hotmail.com" },
 ]
