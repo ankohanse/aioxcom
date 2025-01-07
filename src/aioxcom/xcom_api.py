@@ -408,7 +408,7 @@ class XcomApiTcp(XcomApiBase):
             XcomApiTimeoutException
         """
         if not self._connected:
-            _LOGGER.info(f"_sendPackage - not connected")
+            _LOGGER.warning(f"_sendPackage - not connected")
             return None
         
         async with self._sendPackageLock:
