@@ -59,6 +59,8 @@ class XcomDiscover:
 
         for family in XcomDeviceFamilies.getList():
 
+            _LOGGER.info(f"trying family {family.id} ({family.model})")
+
             # Get value for the specific discovery nr, or otherwise the first info nr or first param nr
             nr = family.nrDiscover or family.nrInfosStart or family.nrParamsStart or None
             if not nr:
@@ -75,6 +77,7 @@ class XcomDiscover:
                 try:
                     param = self._dataset.getByNr(nr, family.idForNr)
 
+                    _LOGGER.info(f"trying device {device_code} on {device_addr} for nr {nr}")
                     value = await self._api.requestValue(param, device_addr)
                     if value is not None:
                         _LOGGER.info(f"Found device {device_code} via {nr}:{device_addr}")
@@ -85,8 +88,11 @@ class XcomDiscover:
                         
                         devices.append(device)
 
+                    else:
+                        _LOGGER.info(f"No device {device_code}; no value returned from Xcom client: {e}")
+
                 except Exception as e:
-                    _LOGGER.debug(f"No device {device_code}; no test value returned from Xcom client: {e}")
+                    _LOGGER.info(f"No device {device_code}; no test value returned from Xcom client: {e}")
 
                     # Do not test further device addresses in this family
                     break
@@ -102,6 +108,7 @@ class XcomDiscover:
         # ID SID
         # ID FID msb/lsb
         try:
+            _LOGGER.info(f"Try get extended device info for device {device.code})")
             family = XcomDeviceFamilies.getById(device.family_id)
 
             id_type    = await self._requestValueByName("ID type",     family.id, device.addr)
@@ -117,8 +124,10 @@ class XcomDiscover:
             device.sw_version   = self._decodeIdSW(id_sw_msb, id_sw_lsb)
             device.fid          = self._decodeFID(id_fid_msb, id_fid_lsb)
 
+            _LOGGER.info(f"Found extended device info: model: {device.device_model}, hw_version: {device.hw_version}, sw_version: {device.sw_version}, fid: {device.fid})")
+
         except Exception as e:
-            _LOGGER.debug(f"Exception in getExtendedDeviceInfo: {e}")
+            _LOGGER.info(f"Exception in getExtendedDeviceInfo: {e}")
 
         return device
 
