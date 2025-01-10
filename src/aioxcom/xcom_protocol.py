@@ -9,6 +9,7 @@
 
 
 import asyncio
+import binascii
 import logging
 import struct
 from io import BufferedWriter, BufferedReader, BytesIO
@@ -222,7 +223,7 @@ class XcomService:
         return 2*2 + 4 + len(self.property_data)
 
     def __str__(self) -> str:
-        return f"(obj_type={self.object_type.hex()}, obj_id={self.object_id}, property_id={self.property_id.hex()}, property_data={self.property_data.hex(' ',1)})"
+        return f"Service(obj_type={self.object_type.hex()}, obj_id={self.object_id}, property_id={self.property_id.hex()}, property_data={self.property_data.hex(' ',1)})"
 
 
 class XcomFrame:
@@ -319,30 +320,46 @@ class XcomHeader:
 class XcomPackage:
 
     start_byte: bytes = b'\xAA'
+    delimeters: bytes = b'\x0D\x0A'
     header: XcomHeader
     frame_data: XcomFrame
 
     @staticmethod
-    async def parse(f: asyncio.StreamReader):
+    async def parse(f: asyncio.StreamReader, verbose=False):
         # package sometimes starts with 0xff
-        skip = -1
-        raw_sb = b''
-        while raw_sb != XcomPackage.start_byte:
-            raw_sb = await f.read(1)
-            skip += 1
+        skipped = bytearray(b'')
+        while True:
+            sb = await f.read(1)
+            if sb == XcomPackage.start_byte:
+                break
 
-        if skip > 0:
-            _LOGGER.debug(f"skipped {skip} bytes until start_byte")
+            skipped.extend(sb)
+
+        if verbose and len(skipped) > 0:
+            _LOGGER.debug(f"skip {len(skipped)} bytes until start-byte ({binascii.hexlify(skipped).decode('ascii')})")
 
         h_raw = await f.read(XcomHeader.length)
-        assert checksum(h_raw) == await f.read(2)
+        h_chk = await f.read(2)
+        assert checksum(h_raw) == h_chk
         header = XcomHeader.parseBytes(h_raw)
 
         f_raw = await f.read(header.data_length)
-        assert checksum(f_raw) == await f.read(2)
+        f_chk = await f.read(2)
+        assert checksum(f_raw) == f_chk
         frame = XcomFrame.parseBytes(f_raw)
 
-        return XcomPackage(header, frame)
+        package = XcomPackage(header, frame)
+
+        if verbose:
+            data = bytearray(b'')
+            data.extend(sb)
+            data.extend(h_raw)
+            data.extend(h_chk)
+            data.extend(f_raw)
+            data.extend(f_chk)
+            _LOGGER.debug(f"recv {len(data)} bytes ({binascii.hexlify(data).decode('ascii')}), decoded: {package}")
+
+        return package
 
     @staticmethod
     async def parseBytes(buf: bytes):
@@ -381,6 +398,8 @@ class XcomPackage:
         f.write(data)
         f.write(checksum(data))
 
+        f.write(self.delimeters)
+
     def getBytes(self) -> bytes:
         buf = BytesIO()
         self.assemble(buf)
@@ -398,7 +417,7 @@ class XcomPackage:
         return None
  
     def __str__(self) -> str:
-        return f"Package(header={self.header}, frame_data={self.frame_data})"
+        return f"Package(header={self.header}, frame={self.frame_data})"
 
 ##
 

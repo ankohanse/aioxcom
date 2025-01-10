@@ -1,6 +1,7 @@
 """xcom_api.py: communication api to Studer Xcom via LAN."""
 
 import asyncio
+import binascii
 import logging
 import socket
 
@@ -111,7 +112,7 @@ class XcomApiBase:
         return False
 
 
-    async def requestValue(self, parameter: XcomDatapoint, dstAddr = 100, retries = None, timeout = None):
+    async def requestValue(self, parameter: XcomDatapoint, dstAddr = 100, retries = None, timeout = None, verbose=False):
         """
         Request a param or info.
         Returns None if not connected, otherwise returns the requested value
@@ -145,7 +146,7 @@ class XcomApiBase:
                     property_data = XcomData.NONE,
                     dst_addr = dstAddr
                 )
-                response = await self._sendPackage(request, timeout=timeout)
+                response = await self._sendPackage(request, timeout=timeout, verbose=verbose)
 
                 # Update diagnostics
                 ts_end = datetime.now()
@@ -177,7 +178,7 @@ class XcomApiBase:
             raise last_exception from None
 
                                          
-    async def requestValues(self, props: list[tuple[XcomDatapoint, int | None]], retries = None, timeout = None):
+    async def requestValues(self, props: list[tuple[XcomDatapoint, int | None]], retries = None, timeout = None, verbose=False):
         """
         Method does not work, results in a 'Service not supported' response from the Xcom client
         """
@@ -204,7 +205,7 @@ class XcomApiBase:
                     property_data = prop.getBytes(),
                     dst_addr = 101
                 )
-                await self._sendPackage(request, timeout=timeout)
+                await self._sendPackage(request, timeout=timeout, verbose=verbose)
 
                 # Update diagnostics
                 ts_end = datetime.now()
@@ -220,7 +221,7 @@ class XcomApiBase:
             raise last_exception from None
 
 
-    async def updateValue(self, parameter: XcomDatapoint, value, dstAddr = 100, retries = None, timeout = None):
+    async def updateValue(self, parameter: XcomDatapoint, value, dstAddr = 100, retries = None, timeout = None, verbose=False):
         """
         Update a param
         Returns None if not connected, otherwise returns True on success
@@ -258,7 +259,7 @@ class XcomApiBase:
                     property_data = XcomData.pack(value, parameter.format),
                     dst_addr = dstAddr
                 )
-                response = await self._sendPackage(request, timeout=timeout)
+                response = await self._sendPackage(request, timeout=timeout, verbose=verbose)
 
                 # Update diagnostics
                 ts_end = datetime.now()
@@ -399,7 +400,7 @@ class XcomApiTcp(XcomApiBase):
         _LOGGER.info(f"Connected to Xcom client '{peername}'")
 
 
-    async def _sendPackage(self, request: XcomPackage, timeout=REQ_TIMEOUT) -> XcomPackage | None:
+    async def _sendPackage(self, request: XcomPackage, timeout=REQ_TIMEOUT, verbose=False) -> XcomPackage | None:
         """
         Send an Xcom package from Server to Client and wait for the response (or timeout).
         Throws:
@@ -414,8 +415,11 @@ class XcomApiTcp(XcomApiBase):
         async with self._sendPackageLock:
             # Send the request package to the Xcom client
             try:
-                #_LOGGER.debug(f"send {request}")
-                self._writer.write(request.getBytes())
+                data = request.getBytes()
+                if verbose:
+                    _LOGGER.debug(f"send {len(data)} bytes ({binascii.hexlify(data).decode('ascii')}), decoded: {request}")
+
+                self._writer.write(data)
 
             except Exception as e:
                 raise XcomApiWriteException(f"Exception while sending request package to Xcom client: {e}") from None
@@ -424,7 +428,7 @@ class XcomApiTcp(XcomApiBase):
             try:
                 async with asyncio.timeout(timeout):
                     while True:
-                        response = await XcomPackage.parse(self._reader)
+                        response = await XcomPackage.parse(self._reader, verbose=verbose)
 
                         if response.isResponse() and \
                         response.frame_data.service_id == request.frame_data.service_id and \

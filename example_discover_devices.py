@@ -20,8 +20,9 @@ async def main():
             return
         
         helper = XcomDiscover(api, dataset)
-        devices = await helper.discoverDevices(getExtendedInfo=True)
+        devices = await helper.discoverDevices(getExtendedInfo=True, verbose=False)
 
+        logger.info(f"\n\n")
         for device in devices:
             logger.info(f"Discovered {device}")
 
