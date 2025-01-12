@@ -1,0 +1,3 @@
+NPort 5000 Series User Manual
+https://www.moxa.com/getmedia/f44e91ea-5e16-47df-85ec-f0221d6ec2b0/moxa-nport-5000-series-manual-v6.7.pdf
+
