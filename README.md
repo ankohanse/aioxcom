@@ -51,7 +51,10 @@ Configuration steps:
 3. Configure the Moxa NPort device
     - In the Main Menu, select 'Operating Settings' -> Port 1
     - Verify that 'Operation Mode' is set to 'TCP Client'
-    - Add the ip-address or network name of your HomeAssistant as 'Destination IP address'
+    - Add the ip-address of your HomeAssistant as 'Destination IP address'
+    - Set Delimeter 1 to '0d' and Enable
+    - Set Delimeter 2 to '0a' and Enable
+    - Set Delimeter Process to 'Strip Delimeter'
     - Press the 'Submit' button
     - Press 'Save/Restart'
 
