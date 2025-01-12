@@ -398,7 +398,8 @@ class XcomPackage:
         f.write(data)
         f.write(checksum(data))
 
-        f.write(self.delimeters)
+        # Don't write delimeter, seems not needed as we send the package in one whole chunk
+        #f.write(self.delimeters)
 
     def getBytes(self) -> bytes:
         buf = BytesIO()
