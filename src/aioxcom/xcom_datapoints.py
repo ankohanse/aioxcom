@@ -159,7 +159,8 @@ class XcomDataset:
             _LOGGER.info(f"Using {len(datapoints)} datapoints for 240 Vac")
 
         else:
-            raise Exception(f"Unknown voltage: '{voltage}'")
+            msg = f"Unknown voltage: '{voltage}'"
+            raise Exception(msg)
 
         return XcomDataset(datapoints)
 

@@ -44,7 +44,8 @@ class XcomDeviceFamily:
             idx = addr - self.addrDevicesStart + 1
             return f"{self.id.upper()}{idx}"
         
-        raise XcomDeviceAddrUnknownException(f"Addr {addr} is not in range for family {self.id} addresses ({self.addrDevicesStart}-{self.addrDevicesEnd})")
+        msg = f"Addr {addr} is not in range for family {self.id} addresses ({self.addrDevicesStart}-{self.addrDevicesEnd})"
+        raise XcomDeviceAddrUnknownException(msg)
 
 
 class XcomDeviceFamilies:

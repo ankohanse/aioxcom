@@ -37,7 +37,9 @@ class XcomData:
             case FORMAT.INT32: return struct.unpack("<i", value)[0]         # 4 bytes, little endian, signed long/int32
             case FORMAT.LONG_ENUM: return struct.unpack("<I", value)[0]     # 4 bytes, little endian, unsigned long/int32
             case FORMAT.STRING: return value.decode('iso-8859-15')          # n bytes, ISO_8859-15 string of 8 bit characters
-            case _: raise TypeError("Unknown data format '{format}")
+            case _: 
+                msg = "Unknown data format '{format}"
+                raise TypeError(msg)
 
     @staticmethod
     def pack(value, format) -> bytes:
@@ -48,7 +50,9 @@ class XcomData:
             case FORMAT.INT32: return struct.pack("<i", int(value))              # 4 bytes, little endian, signed long/int32
             case FORMAT.LONG_ENUM: return struct.pack("<I", int(value))          # 4 bytes, little endian, unsigned long/int32
             case FORMAT.STRING: return value.encode('iso-8859-15')         # n bytes, ISO_8859-15 string of 8 bit characters
-            case _: raise TypeError("Unknown data format '{format}")
+            case _: 
+                msg = "Unknown data format '{format}"
+                raise TypeError(msg)
 
     @staticmethod
     def cast(value: float, format):
@@ -61,7 +65,9 @@ class XcomData:
             case FORMAT.INT32: return int(value)
             case FORMAT.LONG_ENUM: return int(value)
             case FORMAT.STRING: return value.decode('iso-8859-15') 
-            case _: raise TypeError(f"Unknown data format '{format}")
+            case _: 
+                msg = f"Unknown data format '{format}"
+                raise TypeError(msg)
 
 
 class XcomDataMultiInfoReqItem():

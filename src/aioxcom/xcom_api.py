@@ -157,8 +157,9 @@ class XcomApiBase:
                     return None
 
                 if response.isError():
-                    msg = response.getError()
-                    raise XcomApiResponseIsError(f"Response package for {parameter.nr}:{dstAddr} contains message: '{msg}'")
+                    message = response.getError()
+                    msg = f"Response package for {parameter.nr}:{dstAddr} contains message: '{message}'"
+                    raise XcomApiResponseIsError(msg)
 
                 # Unpack the response value
                 # Keep this in the retry loop, sometimes strange invalid byte lengths occur
@@ -166,7 +167,8 @@ class XcomApiBase:
                     return XcomData.unpack(response.frame_data.service_data.property_data, parameter.format)
 
                 except Exception as e:
-                    raise XcomApiUnpackException(f"Failed to unpack response package for {parameter.nr}:{dstAddr}, data={response.frame_data.service_data.property_data.hex()}: {e}") from None
+                    msg = f"Failed to unpack response package for {parameter.nr}:{dstAddr}, data={response.frame_data.service_data.property_data.hex()}: {e}"
+                    raise XcomApiUnpackException(msg) from None
                     
             except Exception as e:
                 last_exception = e
@@ -270,8 +272,9 @@ class XcomApiBase:
                     return None
 
                 if response.isError():
-                    msg = response.getError()
-                    raise XcomApiResponseIsError(f"Response package for {parameter.nr}:{dstAddr} contains message: '{msg}'")
+                    message = response.getError()
+                    msg = f"Response package for {parameter.nr}:{dstAddr} contains message: '{message}'"
+                    raise XcomApiResponseIsError(msg)
 
                 # Success
                 return True
@@ -396,8 +399,8 @@ class XcomApiTcp(XcomApiBase):
         self._writer: asyncio.StreamWriter = writer
         self._connected = True
 
-        peername = self._writer.get_extra_info("peername")
-        _LOGGER.info(f"Connected to Xcom client '{peername}'")
+        (peer_ip,peer_port) = self._writer.get_extra_info("peername")
+        _LOGGER.info(f"Connected to Xcom client '{peer_ip}'")
 
 
     async def _sendPackage(self, request: XcomPackage, timeout=REQ_TIMEOUT, verbose=False) -> XcomPackage | None:
@@ -422,7 +425,8 @@ class XcomApiTcp(XcomApiBase):
                 self._writer.write(data)
 
             except Exception as e:
-                raise XcomApiWriteException(f"Exception while sending request package to Xcom client: {e}") from None
+                msg = f"Exception while sending request package to Xcom client: {e}"
+                raise XcomApiWriteException(msg) from None
 
             # Receive packages until we get the one we expect
             try:
@@ -444,10 +448,12 @@ class XcomApiTcp(XcomApiBase):
                             pass
 
             except asyncio.TimeoutError as te:
-                raise XcomApiTimeoutException(f"Timeout while listening for response package from Xcom client") from None
+                msg = f"Timeout while listening for response package from Xcom client"
+                raise XcomApiTimeoutException(msg) from None
 
             except Exception as e:
-                raise XcomApiReadException(f"Exception while listening for response package from Xcom client: {e}") from None
+                msg = f"Exception while listening for response package from Xcom client: {e}"
+                raise XcomApiReadException() from None
 
 
 ##

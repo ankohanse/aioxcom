@@ -21,7 +21,8 @@ class VOLTAGE(StrEnum):
                 if default is not None:
                     return default
                 else:
-                    raise Exception(f"Unknown voltage: '{s}'")
+                    msg = f"Unknown voltage: '{s}'"
+                    raise Exception(msg)
 
 
 ### data types
@@ -46,7 +47,8 @@ class LEVEL(IntEnum):
                 if default is not None:
                     return default
                 else:
-                    raise Exception(f"Unknown level: '{s}'")
+                    msg = f"Unknown level: '{s}'"
+                    raise Exception(msg)
 
     def __str__(self):
         return self.name
@@ -87,7 +89,8 @@ class FORMAT(StrEnum):
                 if default is not None:
                     return default
                 else:
-                    raise Exception(f"Unknown format: '{s}'")
+                    msg = f"Unknown format: '{s}'"
+                    raise Exception(msg)
 
     def __str__(self):
         return self.name
@@ -117,7 +120,9 @@ class OBJ_TYPE(StrEnum):
             case SCOM_OBJ_TYPE.MESSAGE: return OBJ_TYPE.MESSAGE
             case SCOM_OBJ_TYPE.GUID: return OBJ_TYPE.GUID
             case SCOM_OBJ_TYPE.DATALOG: return OBJ_TYPE.DATALOG
-            case _: raise Exception(f"Unknown obj_type: '{obj_type}'")
+            case _: 
+                msg = f"Unknown obj_type: '{obj_type}'"
+                raise Exception(msg)
 
 ### object_type in Scom/Xcom
 class SCOM_OBJ_TYPE:
@@ -142,7 +147,9 @@ class SCOM_OBJ_TYPE:
             case OBJ_TYPE.MESSAGE: return SCOM_OBJ_TYPE.MESSAGE
             case OBJ_TYPE.GUID: return SCOM_OBJ_TYPE.GUID
             case OBJ_TYPE.DATALOG: return SCOM_OBJ_TYPE.DATALOG
-            case _: raise Exception(f"Unknown obj_type: '{obj_type}'")
+            case _: 
+                msg = f"Unknown obj_type: '{obj_type}'"
+                raise Exception(msg)
 
 ### service_id
 class SCOM_SERVICE:

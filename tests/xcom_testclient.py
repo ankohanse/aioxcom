@@ -58,8 +58,8 @@ class XcomTestClientTcp:
 
             self._reader, self._writer = await asyncio.open_connection("127.0.0.1", self.localPort, limit=1000, family=socket.AF_INET)
 
-            peername = self._writer.get_extra_info("peername")
-            _LOGGER.info(f"Connected to Xcom server '{peername}'")
+            (peer_ip,peer_port) = self._writer.get_extra_info("peername")
+            _LOGGER.info(f"Connected to Xcom server '{peer_ip}'")
 
             self._started = True
             self._connected = True
@@ -111,10 +111,12 @@ class XcomTestClientTcp:
                             return request
 
             except asyncio.TimeoutError as te:
-                raise XcomApiTimeoutException(f"Timeout while listening for request package from Xcom server") from None
+                msg = f"Timeout while listening for request package from Xcom server"
+                raise XcomApiTimeoutException(msg) from None
 
             except Exception as e:
-                raise XcomApiReadException(f"Exception while listening for request package from Xcom server: {e}") from None
+                msg = f"Exception while listening for request package from Xcom server: {e}"
+                raise XcomApiReadException(msg) from None
 
 
     async def sendPackage(self, package: XcomPackage, timeout=REQ_TIMEOUT):
@@ -137,4 +139,5 @@ class XcomTestClientTcp:
                 await self._writer.drain()
 
             except Exception as e:
-                raise XcomApiWriteException(f"Exception while sending package to Xcom server: {e}") from None
+                msg = f"Exception while sending package to Xcom server: {e}"
+                raise XcomApiWriteException(msg) from None
