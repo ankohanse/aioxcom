@@ -53,15 +53,16 @@ async def context():
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("context", "unused_tcp_port")
 @pytest.mark.parametrize(
-    "name, start_server, start_client, wait_server, exp_server_conn, exp_client_conn",
+    "name, start_server, start_client, wait_server, exp_server_conn, exp_client_conn, exp_server_ip, exp_client_ip",
     [
-        ("connect no start", False, False, False, False, False),
-        ("connect no wait",  True,  False, False, False, False),
-        ("connect timeout",  True,  False, True,  False, False),
-        ("connect ok",       True,  True,  True,  True,  True),
+        ("connect no start", False, False, False, False, False, None, None),
+        ("connect no wait",  True,  False, False, False, False, None, None),
+        ("connect timeout",  True,  False, True,  False, False, None, None),
+        ("connect ok",       True,  True,  True,  True,  True,  "127.0.0.1", "127.0.0.1"),
     ]
 )
-async def test_connect(name, start_server, start_client, wait_server, exp_server_conn, exp_client_conn, request):
+async def test_connect(name, start_server, start_client, wait_server, exp_server_conn, exp_client_conn, exp_server_ip, exp_client_ip, request):
+
     context = request.getfixturevalue("context")
     port    = request.getfixturevalue("unused_tcp_port")
 
@@ -86,6 +87,9 @@ async def test_connect(name, start_server, start_client, wait_server, exp_server
 
     assert context.server is None or context.server.connected == exp_server_conn
     assert context.client is None or context.client.connected == exp_client_conn
+
+    assert context.server is None or context.server.remote_ip == exp_server_ip
+    assert context.client is None or context.client.remote_ip == exp_client_ip
 
 
 @pytest.mark.asyncio

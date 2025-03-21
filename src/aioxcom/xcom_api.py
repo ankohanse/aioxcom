@@ -71,6 +71,7 @@ class XcomApiBase:
         """
         self._started = False
         self._connected = False
+        self._remote_ip = None
 
         # Diagnostics gathering
         self._diag_retries = {}
@@ -92,9 +93,15 @@ class XcomApiBase:
     
 
     @property
-    def connected(self):
+    def connected(self) -> bool:
         """Returns True if the Xcom client is connected, otherwise False"""
         return self._connected
+
+
+    @property
+    def remote_ip(self) -> str|None:
+        """Returns the IP address of the connected Xcom client, otherwise None"""
+        return self._remote_ip
 
 
     async def _waitConnected(self, timeout) -> bool:
@@ -335,6 +342,7 @@ class XcomApiTcp(XcomApiBase):
         self._writer = None
         self._started = False
         self._connected = False
+        self._remote_ip = None
 
         self._sendPackageLock = asyncio.Lock() # to make sure _sendPackage is never called concurrently
 
@@ -399,8 +407,10 @@ class XcomApiTcp(XcomApiBase):
         self._writer: asyncio.StreamWriter = writer
         self._connected = True
 
-        (peer_ip,peer_port) = self._writer.get_extra_info("peername")
-        _LOGGER.info(f"Connected to Xcom client '{peer_ip}'")
+        # Gather some info about remote server
+        (self._remote_ip,_) = self._writer.get_extra_info("peername")
+
+        _LOGGER.info(f"Connected to Xcom client '{self._remote_ip}'")
 
 
     async def _sendPackage(self, request: XcomPackage, timeout=REQ_TIMEOUT, verbose=False) -> XcomPackage | None:

@@ -8,6 +8,7 @@ import os
 import struct
 
 from dataclasses import dataclass
+from getmac import get_mac_address
 
 from .xcom_api import (
     XcomApiBase,
@@ -23,6 +24,16 @@ from .xcom_families import (
 
 _LOGGER = logging.getLogger(__name__)
 logging.getLogger("aiohttp").setLevel(logging.WARNING)
+
+
+class XcomDiscoverNotConnected(Exception):
+    """Exception to indicate that remote xcom client is not connected"""
+ 
+
+@dataclass
+class XcomDiscoveredClient:
+    ip: str = None
+    mac: str = None
 
 
 @dataclass
@@ -57,6 +68,11 @@ class XcomDiscover:
         """
         devices: list[XcomDiscoveredDevice] = []
 
+        # Sanity check
+        if not self._api.connected:
+            raise XcomDiscoverNotConnected("XcomApi is not connected to remote client; please connect first.")
+        
+        # Check presence of devices for each family
         for family in XcomDeviceFamilies.getList():
 
             _LOGGER.info(f"Trying family {family.id} ({family.model})")
@@ -177,6 +193,39 @@ class XcomDiscover:
         return bytes.hex(' ',4).upper()
 
 
+    async def discoverClientInfo(self) -> XcomDiscoveredClient:
+        """
+        Discover extended info about the remote Xcom client connected to us
+        """
+
+        # Sanity checks
+        if not self._api.connected:
+            raise XcomDiscoverNotConnected("XcomApi is not connected to remote client; please connect first.")
+
+        if not self._api.remote_ip:
+            raise XcomDiscoverNotConnected("No IP address was detected for the remote client")
+
+        client_ip = None
+        client_mac = None
+
+        try:
+            ip = ipaddress.ip_address(self._api.remote_ip)
+
+            client_ip = str(ip)
+            match ip.version:
+                case 4: client_mac = get_mac_address(ip=client_ip)
+                case 6: client_mac = get_mac_address(ip6=client_ip)
+        except:
+            pass
+
+        return XcomDiscoveredClient(
+            ip = client_ip,
+            mac = client_mac,
+        )
+
+
+
+
     @staticmethod
     async def discoverMoxaWebConfig(hint: str = None) -> str:
         """
@@ -189,6 +238,15 @@ class XcomDiscover:
 
         for line in os.popen('arp -a'):     # arp seems to be available on Linux, Windows and Pi
             try:
+                # Linux:  
+                #   ? (192.168.88.250) at 00:90:e8:3c:f8:7e [ether] on end0
+                #   ...
+                # Windows: 
+                #   Interface: 192.168.88.100 --- 0x4
+                #     Internet Address      Physical Address      Type
+                #     192.168.88.250        00-90-e8-3c-f8-7e     dynamic 
+                #     ...
+                
                 device = line.strip('?').split()[0].strip('()')
                 ip = ipaddress.ip_address(device)
                 urls.append(f"http://{str(ip)}")

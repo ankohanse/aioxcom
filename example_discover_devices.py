@@ -1,4 +1,5 @@
 import asyncio
+from dataclasses import asdict
 import logging
 import sys
 
@@ -20,6 +21,14 @@ async def main():
             return
         
         helper = XcomDiscover(api, dataset)
+
+        # Discover Xcom client info
+        client_info = await helper.discoverClientInfo()
+
+        logger.info(f"\n\n")
+        logger.info(f"Discovered {client_info}")
+
+        # Discover Xcom devices
         devices = await helper.discoverDevices(getExtendedInfo=True, verbose=False)
 
         logger.info(f"\n\n")

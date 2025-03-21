@@ -38,6 +38,7 @@ class XcomTestClientTcp:
         self._writer = None
         self._started = False
         self._connected = False
+        self._remote_ip = None
 
         self._receivePackageLock = asyncio.Lock() # to make sure receivePackage is never called concurrently
         self._sendPackageLock    = asyncio.Lock() # to make sure sendPackage is never called concurrently
@@ -49,6 +50,12 @@ class XcomTestClientTcp:
         return self._connected
 
 
+    @property
+    def remote_ip(self) -> str|None:
+        """Returns the IP address of the connected Xcom client, otherwise None"""
+        return self._remote_ip
+
+
     async def start(self, timeout=START_TIMEOUT) -> bool:
         """
         Start the Xcom Client and listening to the Xcom server.
@@ -58,8 +65,8 @@ class XcomTestClientTcp:
 
             self._reader, self._writer = await asyncio.open_connection("127.0.0.1", self.localPort, limit=1000, family=socket.AF_INET)
 
-            (peer_ip,peer_port) = self._writer.get_extra_info("peername")
-            _LOGGER.info(f"Connected to Xcom server '{peer_ip}'")
+            (self._remote_ip,_) = self._writer.get_extra_info("peername")
+            _LOGGER.info(f"Connected to Xcom server '{self._remote_ip}'")
 
             self._started = True
             self._connected = True
