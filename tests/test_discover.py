@@ -215,7 +215,6 @@ async def test_discover_extendedinfo(name, rsp_dest, rsp_dict, exp_code, exp_mod
     await context.server._waitConnected(5)
     assert context.server.connected == True
     assert context.client.connected == True
-    client_stop_event = threading.Event()
 
     # Once the server is started, we can use it to create the discovery helper
     dataset = await XcomDataset.create(VOLTAGE.AC240)
@@ -244,3 +243,38 @@ async def test_discover_extendedinfo(name, rsp_dest, rsp_dict, exp_code, exp_mod
     assert device.hw_version == exp_hw_version
     assert device.sw_version == exp_sw_version
     assert device.fid == exp_fid
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("context", "unused_tcp_port")
+@pytest.mark.parametrize(
+    "name, rsp_dest, rsp_dict",
+    [
+        ("localhost", [], {}),
+    ]
+)
+async def test_clientinfo(name, rsp_dest, rsp_dict, request):
+    context = request.getfixturevalue("context")
+    port    = request.getfixturevalue("unused_tcp_port")
+
+    # The order of start is important, first discover server, then client
+    await context.start_server(port)
+    await context.start_client(port)
+
+    await context.server._waitConnected(5)
+    assert context.server.connected == True
+    assert context.client.connected == True
+
+    # Once the server is started, we can use it to create the discovery helper
+    dataset = await XcomDataset.create(VOLTAGE.AC240)
+    discover = XcomDiscover(api=context.server, dataset=dataset)
+
+    # Start task for discover
+    client_info = await discover.discoverClientInfo()
+    discover = None
+    dataset = None
+
+    # Check discovered info
+    assert client_info is not None
+    assert client_info.ip == "127.0.0.1"
+    assert client_info.mac == "00:00:00:00:00:00"
