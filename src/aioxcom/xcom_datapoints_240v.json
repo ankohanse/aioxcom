@@ -501,6 +501,7 @@
     {   "fam": "xt",   "lvl": "Info",    "pnr": 30,     "nr": 3075,   "name": "State of the neutral transfer relay",   "short": "Rel_neutral",   "urcc": "",   "fmt": "SHORT ENUM",   "opt": {"0":"Opended", "1":"Closed"} },
     {   "fam": "xt",   "lvl": "Info",    "pnr": 30,     "nr": 3076,   "name": "Discharge of battery of the previous day",   "short": "E out YD",   "urcc": "kWh",   "unit": "kWh",   "fmt": "FLOAT" },
     {   "fam": "xt",   "lvl": "Info",    "pnr": 30,     "nr": 3078,   "name": "Discharge of battery of the current day",   "short": "E out Day",   "urcc": "kWh",   "unit": "kWh",   "fmt": "FLOAT" },
+    {   "fam": "xt",   "lvl": "Info",    "pnr": 30,     "nr": 3079,   "name": "Charge of battery of the current day",   "short": "E in Day",   "urcc": "kWh",   "unit": "kWh",   "fmt": "FLOAT" },
     {   "fam": "xt",   "lvl": "Info",    "pnr": 30,     "nr": 3080,   "name": "Energy AC-In from the previous day",   "short": "Eac in YD",   "urcc": "kWh",   "unit": "kWh",   "fmt": "FLOAT" },
     {   "fam": "xt",   "lvl": "Info",    "pnr": 30,     "nr": 3081,   "name": "Energy AC-In from the current day",   "short": "Eac in Day",   "urcc": "kWh",   "unit": "kWh",   "fmt": "FLOAT" },
     {   "fam": "xt",   "lvl": "Info",    "pnr": 30,     "nr": 3082,   "name": "Consumers energy of the previous day",   "short": "Eac out YD",   "urcc": "kWh",   "unit": "kWh",   "fmt": "FLOAT" },
