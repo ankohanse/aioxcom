@@ -110,7 +110,7 @@ class XcomDataMultiInfoReq:
 class XcomDataMultiInfoRspItem():
     user_info_ref: int
     aggregation_type: int
-    value: float
+    value: bytes
 
     def __init__(self, user_info_ref: int, aggregation_type: int, value: float):
         self.user_info_ref = user_info_ref
@@ -123,18 +123,25 @@ class XcomDataMultiInfoRsp:
     datetime: int
     items: list[XcomDataMultiInfoRspItem]
 
+    def __init__(self, flags, datetime, items):
+        self.flags = flags
+        self.datetime = datetime
+        self.items = items
+
     @staticmethod
     def parse(f: BufferedReader, len: int):
         flags = readUInt32(f)
         datetime= readUInt32(f)
         items = list()
+        len -= 8
 
         while len >= 7:
-            item = XcomDataMultiInfoRspItem()
-            item.user_info_ref = readUInt16(f)
-            item.aggregation_type = readUInt8(f)
-            item.value = readFloat(f)
-            len = len - 7
+            item = XcomDataMultiInfoRspItem(
+                user_info_ref = readUInt16(f),
+                aggregation_type = readUInt8(f),
+                value = f.read(4),
+            )
+            len -= 7
 
             items.append(item)
 
@@ -145,11 +152,20 @@ class XcomDataMultiInfoRsp:
         bio = BytesIO(buf)
         return XcomDataMultiInfoRsp.parse(bio, bio.getbuffer().nbytes)    
         
-    def __init__(self, flags, datetime, items):
-        flags = None
-        datetime = None
-        items = list()
+    def assemble(self, f: BufferedWriter):
+        _LOGGER.debug(f"XcomDataMultiInfoRsp assemble {len(self.items)} items")
+        writeUInt32(f, self.flags)
+        writeUInt32(f, self.datetime)
+        for item in self.items:
+            writeUInt16(f, item.user_info_ref)
+            writeUInt8(f, item.aggregation_type)
+            f.write(item.value)
 
+    def getBytes(self) -> bytes:
+        buf = BytesIO()
+        self.assemble(buf)
+        return buf.getvalue()
+    
     def __len__(self) -> int:
         return 2*4 + len(self.items)*(2+1+4)
 
