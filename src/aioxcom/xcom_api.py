@@ -15,6 +15,7 @@ from .xcom_const import (
     SCOM_SERVICE,
     SCOM_QSP_ID,
     SCOM_ERROR_CODES,
+    MULTI_INFO_REQ_MAX,
 )
 from .xcom_protocol import (
     XcomPackage,
@@ -57,6 +58,10 @@ class XcomApiUnpackException(Exception):
 
 class XcomApiResponseIsError(Exception):
     """Exception to indicate an error message was received back from the xcom client"""
+
+class XcomApiParamException(Exception):
+    """Exception to indicate incorrect parameters passed to function"""
+
 
 
 ##
@@ -191,9 +196,25 @@ class XcomApiBase:
         """
         Method does not work, results in a 'Service not supported' response from the Xcom client
         """
-        prop = XcomDataMultiInfoReq()
-        for (parameter, dstAddr) in props:
-            prop.append(XcomDataMultiInfoReqItem(parameter.nr, 0x00))
+        if len(props) < 1:
+            raise XcomApiParamException("No datapoints passed to requestValues")
+        if len(props) > MULTI_INFO_REQ_MAX:
+            raise XcomApiParamException(f"Too many datapoints passed to requestValues, maximum is {MULTI_INFO_REQ_MAX} in one request")
+        
+        multi_info = XcomDataMultiInfoReq()
+        multi_addr = set()  # place all addresses in a set to see if they are all the same
+
+        for (parameter, addr) in props:
+            if parameter.obj_type != OBJ_TYPE.INFO:
+                raise XcomApiParamException("Calls to requestValues can only contain datapoints with obj_type INFO. Violated by datapoint '{parameter.name}' ({parameter.nr})")
+            
+            multi_info.append(XcomDataMultiInfoReqItem(parameter.nr, 0x00))
+            multi_addr.add(addr)
+
+        #dst_addr = next(iter(multi_addr)) if len(multi_addr)==1 else XcomDeviceFamilies.RCC.addrDevicesStart
+        dst_addr = 501
+        if type(dst_addr) is str:
+            dst_addr = XcomDeviceFamilies.getAddrByCode(dst_addr)
 
         # Sometimes the Xcom client does not seem to pickup a request
         # so retry if needed
@@ -209,17 +230,35 @@ class XcomApiBase:
                 request: XcomPackage = XcomPackage.genPackage(
                     service_id = SCOM_SERVICE.READ,
                     object_type = SCOM_OBJ_TYPE.MULTI_INFO,
-                    object_id = 0x01020304,
-                    property_id = SCOM_QSP_ID.VALUE,
-                    property_data = prop.getBytes(),
-                    dst_addr = 101
+                    object_id = 0x00000001,
+                    property_id = SCOM_QSP_ID.NONE,
+                    property_data = multi_info.getBytes(),
+                    dst_addr = dst_addr
                 )
-                await self._sendPackage(request, timeout=timeout, verbose=verbose)
+                response = await self._sendPackage(request, timeout=timeout, verbose=verbose)
 
                 # Update diagnostics
                 ts_end = datetime.now()
                 await self._addDiagnostics(retries = retry, duration = ts_end-ts_start)
-            
+
+                # Check the response
+                if response is None:
+                    return None
+
+                if response.isError():
+                    message = response.getError()
+                    msg = f"Response package for multi-info:{dst_addr} contains message: '{message}'"
+                    raise XcomApiResponseIsError(msg)
+
+                # Unpack the response value
+                # Keep this in the retry loop, sometimes strange invalid byte lengths occur
+                try:
+                    return XcomDataMultiInfoRsp.parseBytes(response.frame_data.service_data.property_data)
+
+                except Exception as e:
+                    msg = f"Failed to unpack response package for multi-info request, data={response.frame_data.service_data.property_data.hex()}: {e}"
+                    raise XcomApiUnpackException(msg) from None
+                
             except Exception as e:
                 last_exception = e
 

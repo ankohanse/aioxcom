@@ -59,11 +59,11 @@ class TestContext:
                     # Make a deep copy of the request and turn it into a response
                     if req.header.dst_addr not in rsp_dest:
                        flags = 0x03
-                       data = SCOM_ERROR_CODES.DEVICE_NOT_FOUND
+                       data = XcomData.pack(SCOM_ERROR_CODES.DEVICE_NOT_FOUND, FORMAT.ERROR)
 
                     elif str(req.frame_data.service_data.object_id) not in rsp_dict:
                         flags = 0x03
-                        data = SCOM_ERROR_CODES.READ_PROPERTY_FAILED
+                        data = XcomData.pack(SCOM_ERROR_CODES.READ_PROPERTY_FAILED, FORMAT.ERROR)
 
                     else:
                         flags = 0x02

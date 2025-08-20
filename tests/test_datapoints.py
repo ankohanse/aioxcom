@@ -8,8 +8,8 @@ async def test_create():
     dataset120 = await XcomDataset.create(VOLTAGE.AC120)    
     dataset240 = await XcomDataset.create(VOLTAGE.AC240)
 
-    assert len(dataset120._datapoints) == 1435
-    assert len(dataset240._datapoints) == 1435
+    assert len(dataset120._datapoints) == 1436
+    assert len(dataset240._datapoints) == 1436
 
 
 @pytest.mark.asyncio

@@ -45,8 +45,9 @@ class XcomData:
     def pack(value, format) -> bytes:
         match format:
             case FORMAT.BOOL: return struct.pack("<?", int(value))               # 1 byte, little endian, bool
+            case FORMAT.ERROR: return struct.pack("<H", int(value))              # 2 bytes, little endian, unsigned short/int16
             case FORMAT.SHORT_ENUM: return struct.pack("<H", int(value))         # 2 bytes, little endian, unsigned short/int16
-            case FORMAT.FLOAT: return struct.pack("<f", float(value))              # 4 bytes, little endian, float
+            case FORMAT.FLOAT: return struct.pack("<f", float(value))            # 4 bytes, little endian, float
             case FORMAT.INT32: return struct.pack("<i", int(value))              # 4 bytes, little endian, signed long/int32
             case FORMAT.LONG_ENUM: return struct.pack("<I", int(value))          # 4 bytes, little endian, unsigned long/int32
             case FORMAT.STRING: return value.encode('iso-8859-15')         # n bytes, ISO_8859-15 string of 8 bit characters
@@ -193,26 +194,23 @@ class XcomDataMessageRsp:
 
 class XcomService:
 
-    object_type: bytes
+    object_type: int
     object_id: int
-    property_id: bytes
+    property_id: int
     property_data: bytes
 
     @staticmethod
     def parse(f: BufferedReader):
         return XcomService(
-            f.read(2),
-            readUInt32(f),
-            f.read(2),
-            f.read(-1),
+            object_type   = readUInt16(f),
+            object_id     = readUInt32(f),
+            property_id   = readUInt16(f),
+            property_data = f.read(-1),
         )
 
     def __init__(self, 
-            object_type: bytes, object_id: int, 
-            property_id: bytes, property_data: bytes):
-
-        assert len(object_type) == 2
-        assert len(property_id) == 2
+            object_type: int, object_id: int, 
+            property_id: int, property_data: bytes):
 
         self.object_type = object_type
         self.object_id = object_id
@@ -220,29 +218,29 @@ class XcomService:
         self.property_data = property_data
 
     def assemble(self, f: BufferedWriter):
-        f.write(self.object_type)
+        writeUInt16(f, self.object_type)
         writeUInt32(f, self.object_id)
-        f.write(self.property_id)
+        writeUInt16(f, self.property_id)
         f.write(self.property_data)
 
     def __len__(self) -> int:
         return 2*2 + 4 + len(self.property_data)
 
     def __str__(self) -> str:
-        return f"Service(obj_type={self.object_type.hex()}, obj_id={self.object_id}, property_id={self.property_id.hex()}, property_data={self.property_data.hex(' ',1)})"
+        return f"Service(obj_type={self.object_type:04X}, obj_id={self.object_id}, property_id={self.property_id:02X}, property_data={self.property_data.hex(' ',1)})"
 
 
 class XcomFrame:
 
     service_flags: int
-    service_id: bytes
+    service_id: int
     service_data: XcomService
 
     @staticmethod
     def parse(f: BufferedReader):
         return XcomFrame(
             service_flags = readUInt8(f),
-            service_id = f.read(1),
+            service_id = readUInt8(f),
             service_data = XcomService.parse(f)
         )
 
@@ -251,16 +249,13 @@ class XcomFrame:
         return XcomFrame.parse(BytesIO(buf))
 
     def __init__(self, service_id: bytes, service_data: XcomService, service_flags=0):
-        assert service_flags >= 0, "service_flag must not be negative"
-        assert len(service_id) == 1
-
         self.service_flags = service_flags
         self.service_id = service_id
         self.service_data = service_data
 
     def assemble(self, f: BufferedWriter):
         writeUInt8(f, self.service_flags)
-        f.write(self.service_id)
+        writeUInt8(f, self.service_id)
         self.service_data.assemble(f)
 
     def getBytes(self) -> bytes:
@@ -272,7 +267,7 @@ class XcomFrame:
         return 2*1 + len(self.service_data)
 
     def __str__(self) -> str:
-        return f"Frame(flags={self.service_flags}, id={self.service_id.hex()}, service={self.service_data})"
+        return f"Frame(flags={self.service_flags:01X}, id={self.service_id:01X}, service={self.service_data})"
 
 
 class XcomHeader:
@@ -282,15 +277,15 @@ class XcomHeader:
     dst_addr: int
     data_length: int
 
-    length: int = 2*4 + 2 + 1
+    length: int = 1 + 4 + 4 + 2
 
     @staticmethod
     def parse(f: BufferedReader):
         return XcomHeader(
-            frame_flags=readUInt8(f),
-            src_addr=readUInt32(f),
-            dst_addr=readUInt32(f),
-            data_length=readUInt16(f)
+            frame_flags = readUInt8(f),
+            src_addr = readUInt32(f),
+            dst_addr = readUInt32(f),
+            data_length = readUInt16(f)
         )
 
     @staticmethod
@@ -375,10 +370,11 @@ class XcomPackage:
         return await XcomPackage.parse(reader)
     
     @staticmethod
-    def genPackage(service_id: bytes,
-            object_type: bytes,
+    def genPackage(
+            service_id: int,
+            object_type: int,
             object_id: int,
-            property_id: bytes,
+            property_id: int,
             property_data: bytes,
             src_addr = 1,
             dst_addr = 0):
@@ -420,7 +416,8 @@ class XcomPackage:
 
     def getError(self) -> str:
         if self.isError():
-            return SCOM_ERROR_CODES.getByData(self.frame_data.service_data.property_data)
+            error = XcomData.unpack(self.frame_data.service_data.property_data, FORMAT.ERROR)
+            return SCOM_ERROR_CODES.getByError(error)
         return None
  
     def __str__(self) -> str:

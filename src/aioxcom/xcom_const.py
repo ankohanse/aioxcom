@@ -7,6 +7,7 @@
 from dataclasses import dataclass
 from enum import IntEnum, StrEnum
 
+MULTI_INFO_REQ_MAX = 76
 
 class VOLTAGE(StrEnum):
     AC120 = "120 Vac"
@@ -105,6 +106,7 @@ class OBJ_TYPE(StrEnum):
     MESSAGE    = "MESSAGE"
     GUID       = "GUID"
     DATALOG    = "DATALOG"
+    MULTI_INFO = "MULTI-INFO"
 
     def __str__(self):
         return self.name
@@ -120,18 +122,19 @@ class OBJ_TYPE(StrEnum):
             case SCOM_OBJ_TYPE.MESSAGE: return OBJ_TYPE.MESSAGE
             case SCOM_OBJ_TYPE.GUID: return OBJ_TYPE.GUID
             case SCOM_OBJ_TYPE.DATALOG: return OBJ_TYPE.DATALOG
+            case SCOM_OBJ_TYPE.MULTI_INFO: return OBJ_TYPE.MULTI_INFO
             case _: 
                 msg = f"Unknown obj_type: '{obj_type}'"
                 raise Exception(msg)
 
 ### object_type in Scom/Xcom
 class SCOM_OBJ_TYPE:
-    MULTI_INFO = b'\x00\x0A'
-    INFO       = b'\x01\x00'
-    PARAMETER  = b'\x02\x00'
-    MESSAGE    = b'\x03\x00'
-    GUID       = b'\x04\x00'
-    DATALOG    = b'\x05\x00'
+    INFO       = 0x0001
+    PARAMETER  = 0x0002
+    MESSAGE    = 0x0003
+    GUID       = 0x0004
+    DATALOG    = 0x0005
+    MULTI_INFO = 0x000A
 
     def __str__(self):
         return self.name
@@ -147,81 +150,83 @@ class SCOM_OBJ_TYPE:
             case OBJ_TYPE.MESSAGE: return SCOM_OBJ_TYPE.MESSAGE
             case OBJ_TYPE.GUID: return SCOM_OBJ_TYPE.GUID
             case OBJ_TYPE.DATALOG: return SCOM_OBJ_TYPE.DATALOG
+            case OBJ_TYPE.MULTI_INFO: return SCOM_OBJ_TYPE.MULTI_INFO
             case _: 
                 msg = f"Unknown obj_type: '{obj_type}'"
                 raise Exception(msg)
 
-### service_id
+### service_flags
 class SCOM_SERVICE:
-    READ   = b'\x01'
-    WRITE  = b'\x02'
+    READ   = 0x01
+    WRITE  = 0x02
 
 ### property_id
 class SCOM_QSP_ID:
-    VALUE           = b'\x05\x00'
-    MIN             = b'\x06\x00'
-    MAX             = b'\x07\x00'
-    LEVEL           = b'\x08\x00'
-    UNSAVED_VALUE   = b'\x0D\x00'
+    NONE            = 0x0001
+    VALUE           = 0x0005
+    MIN             = 0x0006
+    MAX             = 0x0007
+    LEVEL           = 0x0008
+    UNSAVED_VALUE   = 0x000D
 
 ## values for QSP_LEVEL
 class SCOM_QSP_LEVEL:
-    VIEW_ONLY       = b'\x00\x00'
-    BASIC           = b'\x10\x00'
-    EXPERT          = b'\x20\x00'
-    INSTALLER       = b'\x30\x00'
-    QSP             = b'\x40\x00'
+    VIEW_ONLY       = 0x0000
+    BASIC           = 0x0010
+    EXPERT          = 0x0020
+    INSTALLER       = 0x0030
+    QSP             = 0x0040
 
 ## values for aggregation_type
 class SCOM_AGGREGATION_TYPE:
-    MASTER          = b'\x00'
-    DEVICE1         = b'\x01'
-    DEVICE2         = b'\x02'
-    DEVICE3         = b'\x03'
-    DEVICE4         = b'\x04'
-    DEVICE5         = b'\x05'
-    DEVICE6         = b'\x06'
-    DEVICE7         = b'\x07'
-    DEVICE8         = b'\x08'
-    DEVICE9         = b'\x09'
-    DEVICE10        = b'\x0A'
-    DEVICE11        = b'\x0B'
-    DEVICE12        = b'\x0C'
-    DEVICE13        = b'\x0D'
-    DEVICE14        = b'\x0E'
-    DEVICE15        = b'\x0F'
-    AVERAGE         = b'\xFD'
-    SUM             = b'\xFE'
+    MASTER          = 0x00
+    DEVICE1         = 0x01
+    DEVICE2         = 0x02
+    DEVICE3         = 0x03
+    DEVICE4         = 0x04
+    DEVICE5         = 0x05
+    DEVICE6         = 0x06
+    DEVICE7         = 0x07
+    DEVICE8         = 0x08
+    DEVICE9         = 0x09
+    DEVICE10        = 0x0A
+    DEVICE11        = 0x0B
+    DEVICE12        = 0x0C
+    DEVICE13        = 0x0D
+    DEVICE14        = 0x0E
+    DEVICE15        = 0x0F
+    AVERAGE         = 0xFD
+    SUM             = 0xFE
 
 # SCOM_ADDRESSES
 SCOM_ADDR_BROADCAST = 0
 
 ### error codes
 class SCOM_ERROR_CODES:
-    NO_ERROR                                = b'\x00\x00' 
-    INVALID_FRAME                           = b'\x01\x00' 
-    DEVICE_NOT_FOUND                        = b'\x02\x00' 
-    RESPONSE_TIMEOUT                        = b'\x03\x00' 
-    SERVICE_NOT_SUPPORTED                   = b'\x11\x00' 
-    INVALID_SERVICE_ARGUMENT                = b'\x12\x00' 
-    SCOM_ERROR_GATEWAY_BUSY                 = b'\x13\x00' 
-    TYPE_NOT_SUPPORTED                      = b'\x21\x00' 
-    OBJECT_ID_NOT_FOUND                     = b'\x22\x00' 
-    PROPERTY_NOT_SUPPORTED                  = b'\x23\x00' 
-    INVALID_DATA_LENGTH                     = b'\x24\x00' 
-    PROPERTY_IS_READ_ONLY                   = b'\x25\x00' 
-    INVALID_DATA                            = b'\x26\x00' 
-    DATA_TOO_SMALL                          = b'\x27\x00' 
-    DATA_TOO_BIG                            = b'\x28\x00' 
-    WRITE_PROPERTY_FAILED                   = b'\x29\x00' 
-    READ_PROPERTY_FAILED                    = b'\x2A\x00' 
-    ACCESS_DENIED                           = b'\x2B\x00' 
-    SCOM_ERROR_OBJECT_NOT_SUPPORTED         = b'\x2C\x00' 
-    SCOM_ERROR_MULTICAST_READ_NOT_SUPPORTED = b'\x2D\x00' 
-    OBJECT_PROPERTY_INVALID                 = b'\x2E\x00' 
-    FILE_OR_DIR_NOT_PRESENT                 = b'\x2F\x00' 
-    FILE_CORRUPTED                          = b'\x30\x00' 
-    INVALID_SHELL_ARG                       = b'\x81\x00'
+    NO_ERROR                                = 0x0000 
+    INVALID_FRAME                           = 0x0001
+    DEVICE_NOT_FOUND                        = 0x0002
+    RESPONSE_TIMEOUT                        = 0x0003
+    SERVICE_NOT_SUPPORTED                   = 0x0011
+    INVALID_SERVICE_ARGUMENT                = 0x0012
+    SCOM_ERROR_GATEWAY_BUSY                 = 0x0013
+    TYPE_NOT_SUPPORTED                      = 0x0021
+    OBJECT_ID_NOT_FOUND                     = 0x0022
+    PROPERTY_NOT_SUPPORTED                  = 0x0023
+    INVALID_DATA_LENGTH                     = 0x0024
+    PROPERTY_IS_READ_ONLY                   = 0x0025 
+    INVALID_DATA                            = 0x0026 
+    DATA_TOO_SMALL                          = 0x0027 
+    DATA_TOO_BIG                            = 0x0028 
+    WRITE_PROPERTY_FAILED                   = 0x0029 
+    READ_PROPERTY_FAILED                    = 0x002A 
+    ACCESS_DENIED                           = 0x002B 
+    SCOM_ERROR_OBJECT_NOT_SUPPORTED         = 0x002C 
+    SCOM_ERROR_MULTICAST_READ_NOT_SUPPORTED = 0x002D 
+    OBJECT_PROPERTY_INVALID                 = 0x002E 
+    FILE_OR_DIR_NOT_PRESENT                 = 0x002F 
+    FILE_CORRUPTED                          = 0x0030 
+    INVALID_SHELL_ARG                       = 0x0081
 
     def __str__(self):
         return self.name
@@ -230,9 +235,9 @@ class SCOM_ERROR_CODES:
         return self.name
 
     @staticmethod
-    def getByData(data: bytes):
+    def getByError(error: int):
         for key,val in SCOM_ERROR_CODES.__dict__.items():
-            if type(key) is str and type(val) is bytes and val==data:
+            if type(key) is str and type(val) is int and val==error:
                 return key
 
-        return f"unknown error '{data.hex()}'"
+        return f"unknown error '{error:04x}'"

@@ -98,14 +98,14 @@ async def test_connect(name, start_server, start_client, wait_server, exp_server
     "name, test_nr, test_dest, test_value_update, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except",
     [
         ("request info ok",      3000, 100, None, 100, SCOM_SERVICE.READ, SCOM_OBJ_TYPE.INFO, 3000, SCOM_QSP_ID.VALUE, 0x02, XcomData.pack(1234.0, FORMAT.FLOAT), 1234.0, None),
-        ("request info err",     3000, 100, None, 100, SCOM_SERVICE.READ, SCOM_OBJ_TYPE.INFO, 3000, SCOM_QSP_ID.VALUE, 0x03, SCOM_ERROR_CODES.READ_PROPERTY_FAILED, None, XcomApiResponseIsError),
+        ("request info err",     3000, 100, None, 100, SCOM_SERVICE.READ, SCOM_OBJ_TYPE.INFO, 3000, SCOM_QSP_ID.VALUE, 0x03, XcomData.pack(SCOM_ERROR_CODES.READ_PROPERTY_FAILED, FORMAT.ERROR), None, XcomApiResponseIsError),
         ("request info timeout", 3000, 100, None, 100, SCOM_SERVICE.READ, SCOM_OBJ_TYPE.INFO, 3000, SCOM_QSP_ID.VALUE, 0x00, XcomData.pack(1234.0, FORMAT.FLOAT), None, XcomApiTimeoutException),
         ("request param ok",     1107, 100, None, 100, SCOM_SERVICE.READ, SCOM_OBJ_TYPE.PARAMETER, 1107, SCOM_QSP_ID.UNSAVED_VALUE, 0x02, XcomData.pack(1234.0, FORMAT.FLOAT), 1234.0, None),
         ("update param ok",      1107, 100, 4.0,  100, SCOM_SERVICE.WRITE, SCOM_OBJ_TYPE.PARAMETER, 1107, SCOM_QSP_ID.UNSAVED_VALUE, 0x02, b'', True, None),
-        ("update param err",     1107, 100, 4.0,  100, SCOM_SERVICE.WRITE, SCOM_OBJ_TYPE.PARAMETER, 1107, SCOM_QSP_ID.UNSAVED_VALUE, 0x03, SCOM_ERROR_CODES.WRITE_PROPERTY_FAILED, None, XcomApiResponseIsError),
+        ("update param err",     1107, 100, 4.0,  100, SCOM_SERVICE.WRITE, SCOM_OBJ_TYPE.PARAMETER, 1107, SCOM_QSP_ID.UNSAVED_VALUE, 0x03, XcomData.pack(SCOM_ERROR_CODES.WRITE_PROPERTY_FAILED, FORMAT.ERROR), None, XcomApiResponseIsError),
         ("update param timeout", 1107, 100, 4.0,  100, SCOM_SERVICE.WRITE, SCOM_OBJ_TYPE.PARAMETER, 1107, SCOM_QSP_ID.UNSAVED_VALUE, 0x00, b'', True, XcomApiTimeoutException),
         ("request param vo",     5012, 501, None, 501, SCOM_SERVICE.READ, SCOM_OBJ_TYPE.PARAMETER, 5012, SCOM_QSP_ID.UNSAVED_VALUE, 0x02, XcomData.pack(32, FORMAT.INT32), 32, None),
-        ("update param vo",      5012, 501, 32,   501, SCOM_SERVICE.WRITE, SCOM_OBJ_TYPE.PARAMETER, 5012, SCOM_QSP_ID.UNSAVED_VALUE, 0x03, SCOM_ERROR_CODES.ACCESS_DENIED, None, XcomApiResponseIsError),
+        ("update param vo",      5012, 501, 32,   501, SCOM_SERVICE.WRITE, SCOM_OBJ_TYPE.PARAMETER, 5012, SCOM_QSP_ID.UNSAVED_VALUE, 0x03, XcomData.pack(SCOM_ERROR_CODES.ACCESS_DENIED, FORMAT.ERROR), None, XcomApiResponseIsError),
     ]
 )
 async def test_request(name, test_nr, test_dest, test_value_update, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except, request):
