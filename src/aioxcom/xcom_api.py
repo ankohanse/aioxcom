@@ -139,57 +139,25 @@ class XcomApiBase:
         if type(dstAddr) is str:
             dstAddr = XcomDeviceFamilies.getAddrByCode(dstAddr)
 
-        # Sometimes the Xcom client does not seem to pickup a request
-        # so retry if needed
-        last_exception = None
-        retries = retries or REQ_RETRIES
-        timeout = timeout or REQ_TIMEOUT
+        # Compose the request and send it
+        request: XcomPackage = XcomPackage.genPackage(
+            service_id = SCOM_SERVICE.READ,
+            object_type = SCOM_OBJ_TYPE.fromObjType(parameter.obj_type),
+            object_id = parameter.nr,
+            property_id = SCOM_QSP_ID.UNSAVED_VALUE if parameter.obj_type == OBJ_TYPE.PARAMETER else SCOM_QSP_ID.VALUE,
+            property_data = XcomData.NONE,
+            dst_addr = dstAddr
+        )
 
-        for retry in range(retries):
+        response = await self._sendRequest(request, retries=retries, timeout=timeout, verbose=verbose)
+        if response is not None:
+            # Unpack the response value
             try:
-                ts_start = datetime.now()
-                
-                # Compose the request and send it
-                request: XcomPackage = XcomPackage.genPackage(
-                    service_id = SCOM_SERVICE.READ,
-                    object_type = SCOM_OBJ_TYPE.fromObjType(parameter.obj_type),
-                    object_id = parameter.nr,
-                    property_id = SCOM_QSP_ID.UNSAVED_VALUE if parameter.obj_type == OBJ_TYPE.PARAMETER else SCOM_QSP_ID.VALUE,
-                    property_data = XcomData.NONE,
-                    dst_addr = dstAddr
-                )
-                response = await self._sendPackage(request, timeout=timeout, verbose=verbose)
+                return XcomData.unpack(response.frame_data.service_data.property_data, parameter.format)
 
-                # Update diagnostics
-                ts_end = datetime.now()
-                await self._addDiagnostics(retries = retry, duration = ts_end-ts_start)
-
-                # Check the response
-                if response is None:
-                    return None
-
-                if response.isError():
-                    message = response.getError()
-                    msg = f"Response package for {parameter.nr}:{dstAddr} contains message: '{message}'"
-                    raise XcomApiResponseIsError(msg)
-
-                # Unpack the response value
-                # Keep this in the retry loop, sometimes strange invalid byte lengths occur
-                try:
-                    return XcomData.unpack(response.frame_data.service_data.property_data, parameter.format)
-
-                except Exception as e:
-                    msg = f"Failed to unpack response package for {parameter.nr}:{dstAddr}, data={response.frame_data.service_data.property_data.hex()}: {e}"
-                    raise XcomApiUnpackException(msg) from None
-                    
             except Exception as e:
-                last_exception = e
-
-        # Update diagnostics in case of timeout of each retry
-        await self._addDiagnostics(retries = retry)
-
-        if last_exception:
-            raise last_exception from None
+                msg = f"Failed to unpack response package for {parameter.nr}:{dstAddr}, data={response.frame_data.service_data.property_data.hex()}: {e}"
+                raise XcomApiUnpackException(msg) from None
 
                                          
     async def requestValues(self, props: list[tuple[XcomDatapoint, int | None]], retries = None, timeout = None, verbose=False):
@@ -216,57 +184,25 @@ class XcomApiBase:
         if type(dst_addr) is str:
             dst_addr = XcomDeviceFamilies.getAddrByCode(dst_addr)
 
-        # Sometimes the Xcom client does not seem to pickup a request
-        # so retry if needed
-        last_exception = None
-        retries = retries or REQ_RETRIES
-        timeout = timeout or REQ_TIMEOUT
+        # Compose the request and send it
+        request: XcomPackage = XcomPackage.genPackage(
+            service_id = SCOM_SERVICE.READ,
+            object_type = SCOM_OBJ_TYPE.MULTI_INFO,
+            object_id = 0x00000001,
+            property_id = SCOM_QSP_ID.NONE,
+            property_data = multi_info.getBytes(),
+            dst_addr = dst_addr
+        )
 
-        for retry in range(retries):
+        response = await self._sendRequest(request, retries=retries, timeout=timeout, verbose=verbose)
+        if response is not None:
+            # Unpack the response value
             try:
-                ts_start = datetime.now()
-                
-                # Compose the request and send it
-                request: XcomPackage = XcomPackage.genPackage(
-                    service_id = SCOM_SERVICE.READ,
-                    object_type = SCOM_OBJ_TYPE.MULTI_INFO,
-                    object_id = 0x00000001,
-                    property_id = SCOM_QSP_ID.NONE,
-                    property_data = multi_info.getBytes(),
-                    dst_addr = dst_addr
-                )
-                response = await self._sendPackage(request, timeout=timeout, verbose=verbose)
+                return XcomDataMultiInfoRsp.parseBytes(response.frame_data.service_data.property_data)
 
-                # Update diagnostics
-                ts_end = datetime.now()
-                await self._addDiagnostics(retries = retry, duration = ts_end-ts_start)
-
-                # Check the response
-                if response is None:
-                    return None
-
-                if response.isError():
-                    message = response.getError()
-                    msg = f"Response package for multi-info:{dst_addr} contains message: '{message}'"
-                    raise XcomApiResponseIsError(msg)
-
-                # Unpack the response value
-                # Keep this in the retry loop, sometimes strange invalid byte lengths occur
-                try:
-                    return XcomDataMultiInfoRsp.parseBytes(response.frame_data.service_data.property_data)
-
-                except Exception as e:
-                    msg = f"Failed to unpack response package for multi-info request, data={response.frame_data.service_data.property_data.hex()}: {e}"
-                    raise XcomApiUnpackException(msg) from None
-                
             except Exception as e:
-                last_exception = e
-
-        # Update diagnostics in case of timeout of each retry
-        await self._addDiagnostics(retries = retry)
-
-        if last_exception:
-            raise last_exception from None
+                msg = f"Failed to unpack response package for multi-info request, data={response.frame_data.service_data.property_data.hex()}: {e}"
+                raise XcomApiUnpackException(msg) from None
 
 
     async def updateValue(self, parameter: XcomDatapoint, value, dstAddr = 100, retries = None, timeout = None, verbose=False):
@@ -289,6 +225,26 @@ class XcomApiBase:
 
         _LOGGER.debug(f"Update value {parameter} on addr {dstAddr}")
 
+        # Compose the request and send it
+        request: XcomPackage = XcomPackage.genPackage(
+            service_id = SCOM_SERVICE.WRITE,
+            object_type = SCOM_OBJ_TYPE.PARAMETER,
+            object_id = parameter.nr,
+            property_id = SCOM_QSP_ID.UNSAVED_VALUE,
+            property_data = XcomData.pack(value, parameter.format),
+            dst_addr = dstAddr
+        )
+
+        response = await self._sendRequest(request, retries=retries, timeout=timeout, verbose=verbose)
+        if response is not None:
+            # No need to unpack the response value
+            return True
+        
+        return False
+    
+
+    async def _sendRequest(self, request: XcomPackage, retries = None, timeout = None, verbose=False):
+    
         # Sometimes the Xcom client does not seem to pickup a request
         # so retry if needed
         last_exception = None
@@ -298,15 +254,7 @@ class XcomApiBase:
         for retry in range(retries):
             try:
                 ts_start = datetime.now()
-                
-                request: XcomPackage = XcomPackage.genPackage(
-                    service_id = SCOM_SERVICE.WRITE,
-                    object_type = SCOM_OBJ_TYPE.PARAMETER,
-                    object_id = parameter.nr,
-                    property_id = SCOM_QSP_ID.UNSAVED_VALUE,
-                    property_data = XcomData.pack(value, parameter.format),
-                    dst_addr = dstAddr
-                )
+
                 response = await self._sendPackage(request, timeout=timeout, verbose=verbose)
 
                 # Update diagnostics
@@ -319,12 +267,12 @@ class XcomApiBase:
 
                 if response.isError():
                     message = response.getError()
-                    msg = f"Response package for {parameter.nr}:{dstAddr} contains message: '{message}'"
+                    msg = f"Response package for {request.frame_data.service_data.property_id}:{request.header.dst_addr} contains message: '{message}'"
                     raise XcomApiResponseIsError(msg)
-
+                
                 # Success
-                return True
-            
+                return response
+                    
             except Exception as e:
                 last_exception = e
 
@@ -333,7 +281,7 @@ class XcomApiBase:
 
         if last_exception:
             raise last_exception from None
-    
+
 
     async def _sendPackage(self, request: XcomPackage, timeout=REQ_TIMEOUT) -> XcomPackage | None:
         raise NotImplementedError()
