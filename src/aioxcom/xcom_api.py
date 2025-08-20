@@ -11,6 +11,7 @@ from .xcom_const import (
     FORMAT,
     LEVEL,
     OBJ_TYPE,
+    SCOM_OBJ_ID,
     SCOM_OBJ_TYPE,
     SCOM_SERVICE,
     SCOM_QSP_ID,
@@ -124,6 +125,40 @@ class XcomApiBase:
         return False
 
 
+    async def requestGuid(self, retries = None, timeout = None, verbose=False):
+        """
+        Request the GUID that is used for remotely identifying the installation.
+        This function is only for the Modem or Ethernet mode
+
+        Returns None if not connected, otherwise returns the requested value
+        Throws
+            XcomApiWriteException
+            XcomApiReadException
+            XcomApiTimeoutException
+            XcomApiResponseIsError
+        """
+
+        # Compose the request and send it
+        request: XcomPackage = XcomPackage.genPackage(
+            service_id = SCOM_SERVICE.READ,
+            object_type = SCOM_OBJ_TYPE.GUID,
+            object_id = SCOM_OBJ_ID.NONE,
+            property_id = SCOM_QSP_ID.NONE,
+            property_data = XcomData.NONE,
+            dst_addr = XcomDeviceFamilies.RCC.addrDevicesStart
+        )
+
+        response = await self._sendRequest(request, retries=retries, timeout=timeout, verbose=verbose)
+        if response is not None:
+            # Unpack the response value
+            try:
+                return XcomData.unpack(response.frame_data.service_data.property_data, FORMAT.GUID)
+
+            except Exception as e:
+                msg = f"Failed to unpack response package for GUID:{request.header.dst_addr}, data={response.frame_data.service_data.property_data.hex()}: {e}"
+                raise XcomApiUnpackException(msg) from None
+
+                                         
     async def requestValue(self, parameter: XcomDatapoint, dstAddr = 100, retries = None, timeout = None, verbose=False):
         """
         Request a param or info.

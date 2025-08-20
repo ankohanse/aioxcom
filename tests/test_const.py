@@ -68,6 +68,7 @@ def test_level(fixture:str, inp_str:str, inp_def: LEVEL|None, exp_val: LEVEL|Non
         ("FLOAT",         "FLOAT",         None, FORMAT.FLOAT, None),
         ("LONG_ENUM",     "LONG_ENUM",     None, FORMAT.LONG_ENUM, None),
         ("LONG ENUM",     "LONG ENUM",     None, FORMAT.LONG_ENUM, None),
+        ("GUID",          "GUID",          None, FORMAT.GUID, None),
         ("STRING",        "STRING",        None, FORMAT.STRING, None),
         ("DYNAMIC",       "DYNAMIC",       None, FORMAT.DYNAMIC, None),
         ("BYTES",         "BYTES",         None, FORMAT.BYTES, None),

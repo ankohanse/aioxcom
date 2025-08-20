@@ -155,6 +155,7 @@ async def test_package_flags(name, fixture, modify_flags, modify_data, expected_
         ("int32",      1234, FORMAT.INT32, 4),
         ("long enum",  1234, FORMAT.LONG_ENUM, 4),
         ("float",      123.4, FORMAT.FLOAT, 4),
+        ("guid",       "00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff", FORMAT.GUID, 16),
         ("string",     "abcde", FORMAT.STRING, 5),
     ]
 )

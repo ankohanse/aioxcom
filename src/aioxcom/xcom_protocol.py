@@ -36,6 +36,7 @@ class XcomData:
             case FORMAT.FLOAT: return struct.unpack("<f", value)[0]         # 4 bytes, little endian, float
             case FORMAT.INT32: return struct.unpack("<i", value)[0]         # 4 bytes, little endian, signed long/int32
             case FORMAT.LONG_ENUM: return struct.unpack("<I", value)[0]     # 4 bytes, little endian, unsigned long/int32
+            case FORMAT.GUID: return value.hex(sep=':')                     # 16 bytes
             case FORMAT.STRING: return value.decode('iso-8859-15')          # n bytes, ISO_8859-15 string of 8 bit characters
             case _: 
                 msg = "Unknown data format '{format}"
@@ -44,12 +45,13 @@ class XcomData:
     @staticmethod
     def pack(value, format) -> bytes:
         match format:
-            case FORMAT.BOOL: return struct.pack("<?", int(value))               # 1 byte, little endian, bool
-            case FORMAT.ERROR: return struct.pack("<H", int(value))              # 2 bytes, little endian, unsigned short/int16
-            case FORMAT.SHORT_ENUM: return struct.pack("<H", int(value))         # 2 bytes, little endian, unsigned short/int16
-            case FORMAT.FLOAT: return struct.pack("<f", float(value))            # 4 bytes, little endian, float
-            case FORMAT.INT32: return struct.pack("<i", int(value))              # 4 bytes, little endian, signed long/int32
-            case FORMAT.LONG_ENUM: return struct.pack("<I", int(value))          # 4 bytes, little endian, unsigned long/int32
+            case FORMAT.BOOL: return struct.pack("<?", int(value))         # 1 byte, little endian, bool
+            case FORMAT.ERROR: return struct.pack("<H", int(value))        # 2 bytes, little endian, unsigned short/int16
+            case FORMAT.SHORT_ENUM: return struct.pack("<H", int(value))   # 2 bytes, little endian, unsigned short/int16
+            case FORMAT.FLOAT: return struct.pack("<f", float(value))      # 4 bytes, little endian, float
+            case FORMAT.INT32: return struct.pack("<i", int(value))        # 4 bytes, little endian, signed long/int32
+            case FORMAT.LONG_ENUM: return struct.pack("<I", int(value))    # 4 bytes, little endian, unsigned long/int32
+            case FORMAT.GUID: return bytes.fromhex(value.replace(':',''))  # 16 bytes
             case FORMAT.STRING: return value.encode('iso-8859-15')         # n bytes, ISO_8859-15 string of 8 bit characters
             case _: 
                 msg = "Unknown data format '{format}"

@@ -65,6 +65,7 @@ class FORMAT(StrEnum):
     INT32      = "INT32"        # 4 bytes
     FLOAT      = "FLOAT"        # 4 bytes
     LONG_ENUM  = "LONG_ENUM"    # 4 bytes
+    GUID       = "GUID"         # 16 bytes
     STRING     = "STRING"       # n bytes
     DYNAMIC    = "DYNAMIC"      # n bytes
     BYTES      = "BYTES"        # n bytes
@@ -81,6 +82,7 @@ class FORMAT(StrEnum):
             case 'INT32': return FORMAT.INT32
             case 'FLOAT': return FORMAT.FLOAT
             case 'LONG_ENUM' | 'LONG ENUM': return FORMAT.LONG_ENUM
+            case 'GUID': return FORMAT.GUID
             case 'STRING': return FORMAT.STRING
             case 'DYNAMIC': return FORMAT.DYNAMIC
             case 'BYTES': return FORMAT.BYTES
@@ -155,6 +157,11 @@ class SCOM_OBJ_TYPE:
                 msg = f"Unknown obj_type: '{obj_type}'"
                 raise Exception(msg)
 
+### object_id
+class SCOM_OBJ_ID:
+    NONE   = 0x00
+
+
 ### service_flags
 class SCOM_SERVICE:
     READ   = 0x01
@@ -162,7 +169,7 @@ class SCOM_SERVICE:
 
 ### property_id
 class SCOM_QSP_ID:
-    NONE            = 0x0001
+    NONE            = 0x0000
     VALUE           = 0x0005
     MIN             = 0x0006
     MAX             = 0x0007

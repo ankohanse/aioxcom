@@ -39,12 +39,12 @@ async def main():
 
         # Retrieve multiple params in one call
         props: list[XcomDatapoint,str] = [
-            #(info_3021, 0),
-            #(info_3022, 0),
+            (info_3021, 0),
+            (info_3022, 0),
             (info_3023, 0),
         ]
-        values = await api.requestValues(props)
-        logger.info(f"RCC multi-info: ")
+        #values = await api.requestValues(props)
+        #logger.info(f"RCC multi-info: ")
 
         # Retrieve and Update param 1107 on the first Xtender (Maximum current of AC source)
         value = await api.requestValue(param_1107, "XT1")
@@ -53,6 +53,10 @@ async def main():
         value = 3.0    # 4 Ampere
         if await api.updateValue(param_1107, value, "XT1"):
             logger.info(f"XT1 {param_1107.nr} updated to {value} {param_1107.unit} ({param_1107.name})")
+
+        # Retrieve unique guid for this installation
+        value = await api.requestGuid()
+        logger.info(f"Installation Guid: {value}")
 
     except Exception as e:
         logger.info(f"Unexpected exception: {e}")
