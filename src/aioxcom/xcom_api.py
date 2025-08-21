@@ -195,9 +195,18 @@ class XcomApiBase:
                 raise XcomApiUnpackException(msg) from None
 
                                          
-    async def requestValues(self, props: list[tuple[XcomDatapoint, int | None]], retries = None, timeout = None, verbose=False):
+    async def requestValues(self, props: list[tuple[XcomDatapoint, int | None]], retries = None, timeout = None, verbose=False) -> XcomDataMultiInfoRsp:
         """
-        Method does not work, results in a 'Service not supported' response from the Xcom client
+        Request multiple infos in one call.
+        Returns None if not connected, otherwise returns the list of requested values
+        Throws
+            XcomApiWriteException
+            XcomApiReadException
+            XcomApiTimeoutException
+            XcomApiResponseIsError
+
+        Note: on some systems (older firmware?) this method does not work and always 
+              results in a 'Service not supported' response from the Xcom client
         """
         if len(props) < 1:
             raise XcomApiParamException("No datapoints passed to requestValues")
@@ -205,28 +214,20 @@ class XcomApiBase:
             raise XcomApiParamException(f"Too many datapoints passed to requestValues, maximum is {MULTI_INFO_REQ_MAX} in one request")
         
         multi_info = XcomDataMultiInfoReq()
-        multi_addr = set()  # place all addresses in a set to see if they are all the same
-
         for (parameter, addr) in props:
             if parameter.obj_type != OBJ_TYPE.INFO:
                 raise XcomApiParamException("Calls to requestValues can only contain datapoints with obj_type INFO. Violated by datapoint '{parameter.name}' ({parameter.nr})")
             
             multi_info.append(XcomDataMultiInfoReqItem(parameter.nr, 0x00))
-            multi_addr.add(addr)
-
-        #dst_addr = next(iter(multi_addr)) if len(multi_addr)==1 else XcomDeviceFamilies.RCC.addrDevicesStart
-        dst_addr = 501
-        if type(dst_addr) is str:
-            dst_addr = XcomDeviceFamilies.getAddrByCode(dst_addr)
 
         # Compose the request and send it
         request: XcomPackage = XcomPackage.genPackage(
             service_id = SCOM_SERVICE.READ,
             object_type = SCOM_OBJ_TYPE.MULTI_INFO,
-            object_id = 0x00000001,
-            property_id = SCOM_QSP_ID.NONE,
+            object_id = SCOM_OBJ_ID.MULTI_INFO,
+            property_id = SCOM_QSP_ID.MULTI_INFO,
             property_data = multi_info.getBytes(),
-            dst_addr = dst_addr
+            dst_addr = XcomDeviceFamilies.RCC.addrDevicesStart
         )
 
         response = await self._sendRequest(request, retries=retries, timeout=timeout, verbose=verbose)

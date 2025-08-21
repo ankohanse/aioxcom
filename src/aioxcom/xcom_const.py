@@ -159,7 +159,8 @@ class SCOM_OBJ_TYPE:
 
 ### object_id
 class SCOM_OBJ_ID:
-    NONE   = 0x00
+    NONE        = 0x00000000
+    MULTI_INFO  = 0x00000001
 
 
 ### service_flags
@@ -170,6 +171,7 @@ class SCOM_SERVICE:
 ### property_id
 class SCOM_QSP_ID:
     NONE            = 0x0000
+    MULTI_INFO      = 0x0001
     VALUE           = 0x0005
     MIN             = 0x0006
     MAX             = 0x0007

@@ -17,7 +17,6 @@ async def main():
     info_7002 = dataset.getByNr(7002, "bsp")
     param_5012 = dataset.getByNr(5012, "rcc")
     param_1107 = dataset.getByNr(1107, "xt")
-    dataset = None  # Release memory of the dataset
 
     api = XcomApiTcp(4001)    # port number configured in Xcom-LAN/Moxa NPort
     try:
@@ -37,14 +36,20 @@ async def main():
         value = await api.requestValue(param_5012, "RCC")    # rcc address range is only 501, or use "RCC"
         logger.info(f"RCC {param_5012.nr}: {param_5012.enum_value(value)} ({param_5012.name})")
 
-        # Retrieve multiple params in one call
-        props: list[XcomDatapoint,str] = [
-            (info_3021, 0),
-            (info_3022, 0),
-            (info_3023, 0),
-        ]
-        #values = await api.requestValues(props)
-        #logger.info(f"RCC multi-info: ")
+        # Retrieve multiple params in one call. Note this will fail for some older Xcom-LAN firmware versions
+        try:
+            props: list[XcomDatapoint,str] = [
+                (info_3021, 0),
+                (info_3022, 0),
+                (info_3023, 0),
+            ]
+            values = await api.requestValues(props)
+            if values:
+                for item in values.items:
+                    info = dataset.getByNr(item.user_info_ref)
+                    logger.info(f"Multi-info {info.nr}: {item.value} {info.unit} ({info.name})")
+        except Exception as ex:
+            logger.warning(ex)
 
         # Retrieve and Update param 1107 on the first Xtender (Maximum current of AC source)
         value = await api.requestValue(param_1107, "XT1")
