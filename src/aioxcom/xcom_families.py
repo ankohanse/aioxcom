@@ -264,7 +264,7 @@ class XcomDeviceFamilies:
                 return XcomDeviceFamilies.getAggregationTypeByAddr(val)
 
         else:
-            raise XcomParamException("Invalid aggregate type {val} ({type(val)})")
+            raise XcomParamException(f"Invalid aggregate type {val} ({type(val)})")
 
 
 

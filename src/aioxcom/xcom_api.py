@@ -6,6 +6,7 @@ import logging
 import socket
 
 from datetime import datetime, timedelta
+from typing import Iterable
 
 from .xcom_const import (
     FORMAT,
@@ -196,7 +197,7 @@ class XcomApiBase:
                 raise XcomApiUnpackException(msg) from None
 
                                          
-    async def requestValues(self, props: list[tuple[XcomDatapoint, SCOM_AGGREGATION_TYPE|str|None]], retries = None, timeout = None, verbose=False):
+    async def requestValues(self, props: Iterable[tuple[XcomDatapoint, SCOM_AGGREGATION_TYPE|str|None]], retries = None, timeout = None, verbose=False):
         """
         Request multiple infos in one call.
         Returns None if not connected, otherwise returns the list of requested values
@@ -217,17 +218,14 @@ class XcomApiBase:
             raise XcomApiParamException(f"Too many datapoints passed to requestValues, maximum is {MULTI_INFO_REQ_MAX} in one request")
         
         multi_info = XcomDataMultiInfoReq()
-        for idx, (datapoint,aggr) in enumerate(props):
+        for datapoint,aggr in props:
 
             if datapoint.obj_type != OBJ_TYPE.INFO:
-                raise XcomApiParamException("Invalid datapoint passed to requestValues; must have obj_type INFO. Violated by datapoint '{datapoint.name}' ({parameter.nr})")
+                raise XcomApiParamException(f"Invalid datapoint passed to requestValues; must have obj_type INFO. Violated by datapoint '{datapoint.name}' ({parameter.nr})")
             
             aggregation_type = XcomDeviceFamilies.getAggregationTypeByAny(aggr)   
 
             multi_info.append(XcomDataMultiInfoReqItem(datapoint.nr, aggregation_type))
-
-            # Make prop list parameters consistent so we can use it later when processing the results
-            props[idx] = (datapoint, aggregation_type)
 
         # Compose the request and send it
         request: XcomPackage = XcomPackage.genPackage(
@@ -245,13 +243,14 @@ class XcomApiBase:
             try:
                 rsp = XcomDataMultiInfoRsp.parseBytes(response.frame_data.service_data.property_data)
 
+                # Compose resulting list of datapoint, aggregation_type and unpacked value
                 result = []
-                for datapoint,aggr in props:
+                for item in rsp.items:
 
-                    value = next((item.value for item in rsp.items if item.user_info_ref==datapoint.nr and item.aggregation_type==aggr), XcomData.NONE)
-                    val = XcomData.unpack(value, datapoint.format)
+                    item_datapoint = next((dp for dp,aggr in props if dp.nr==item.user_info_ref), None)
+                    item_value = XcomData.unpack(item.value, datapoint.format)
 
-                    result.append( (datapoint,aggr,val) )
+                    result.append( (item_datapoint, item.aggregation_type, item_value) )
 
                 return result
 
@@ -322,7 +321,7 @@ class XcomApiBase:
 
                 if response.isError():
                     message = response.getError()
-                    msg = f"Response package for {request.frame_data.service_data.property_id}:{request.header.dst_addr} contains message: '{message}'"
+                    msg = f"Response package for {request.frame_data.service_data.object_id}:{request.header.dst_addr} contains message: '{message}'"
                     raise XcomApiResponseIsError(msg)
                 
                 # Success
