@@ -11,6 +11,7 @@ from .xcom_const import (
     FORMAT,
     LEVEL,
     OBJ_TYPE,
+    SCOM_AGGREGATION_TYPE,
     SCOM_OBJ_ID,
     SCOM_OBJ_TYPE,
     SCOM_SERVICE,
@@ -195,7 +196,7 @@ class XcomApiBase:
                 raise XcomApiUnpackException(msg) from None
 
                                          
-    async def requestValues(self, props: list[tuple[XcomDatapoint, int | None]], retries = None, timeout = None, verbose=False) -> XcomDataMultiInfoRsp:
+    async def requestValues(self, props: list[tuple[XcomDatapoint, SCOM_AGGREGATION_TYPE|str|None]], retries = None, timeout = None, verbose=False):
         """
         Request multiple infos in one call.
         Returns None if not connected, otherwise returns the list of requested values
@@ -205,20 +206,28 @@ class XcomApiBase:
             XcomApiTimeoutException
             XcomApiResponseIsError
 
-        Note: on some systems (older firmware?) this method does not work and always 
-              results in a 'Service not supported' response from the Xcom client
+        Note: this requires at least firmware version 1.6.74 on your Xcom-232/Xcom-LAN.
+              On older versions it results in a 'Service not supported' response from the Xcom client
         """
+
+        # Check input parameters
         if len(props) < 1:
             raise XcomApiParamException("No datapoints passed to requestValues")
         if len(props) > MULTI_INFO_REQ_MAX:
             raise XcomApiParamException(f"Too many datapoints passed to requestValues, maximum is {MULTI_INFO_REQ_MAX} in one request")
         
         multi_info = XcomDataMultiInfoReq()
-        for (parameter, addr) in props:
-            if parameter.obj_type != OBJ_TYPE.INFO:
-                raise XcomApiParamException("Calls to requestValues can only contain datapoints with obj_type INFO. Violated by datapoint '{parameter.name}' ({parameter.nr})")
+        for idx, (datapoint,aggr) in enumerate(props):
+
+            if datapoint.obj_type != OBJ_TYPE.INFO:
+                raise XcomApiParamException("Invalid datapoint passed to requestValues; must have obj_type INFO. Violated by datapoint '{datapoint.name}' ({parameter.nr})")
             
-            multi_info.append(XcomDataMultiInfoReqItem(parameter.nr, 0x00))
+            aggregation_type = XcomDeviceFamilies.getAggregationTypeByAny(aggr)   
+
+            multi_info.append(XcomDataMultiInfoReqItem(datapoint.nr, aggregation_type))
+
+            # Make prop list parameters consistent so we can use it later when processing the results
+            props[idx] = (datapoint, aggregation_type)
 
         # Compose the request and send it
         request: XcomPackage = XcomPackage.genPackage(
@@ -234,7 +243,17 @@ class XcomApiBase:
         if response is not None:
             # Unpack the response value
             try:
-                return XcomDataMultiInfoRsp.parseBytes(response.frame_data.service_data.property_data)
+                rsp = XcomDataMultiInfoRsp.parseBytes(response.frame_data.service_data.property_data)
+
+                result = []
+                for datapoint,aggr in props:
+
+                    value = next((item.value for item in rsp.items if item.user_info_ref==datapoint.nr and item.aggregation_type==aggr), XcomData.NONE)
+                    val = XcomData.unpack(value, datapoint.format)
+
+                    result.append( (datapoint,aggr,val) )
+
+                return result
 
             except Exception as e:
                 msg = f"Failed to unpack response package for multi-info request, data={response.frame_data.service_data.property_data.hex()}: {e}"
@@ -320,6 +339,7 @@ class XcomApiBase:
 
 
     async def _sendPackage(self, request: XcomPackage, timeout=REQ_TIMEOUT) -> XcomPackage | None:
+        """Implemented in derived classes"""
         raise NotImplementedError()
     
 

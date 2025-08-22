@@ -2,7 +2,9 @@ import asyncio
 import logging
 import sys
 
-from aioxcom import XcomApiTcp, XcomDataset, XcomDatapoint, VOLTAGE
+from aioxcom import XcomApiTcp, XcomDataset, XcomDatapoint
+from aioxcom import VOLTAGE, SCOM_AGGREGATION_TYPE
+from aioxcom.xcom_protocol import XcomData
 
 # Setup logging to StdOut
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -36,18 +38,18 @@ async def main():
         value = await api.requestValue(param_5012, "RCC")    # rcc address range is only 501, or use "RCC"
         logger.info(f"RCC {param_5012.nr}: {param_5012.enum_value(value)} ({param_5012.name})")
 
-        # Retrieve multiple params in one call. Note this will fail for some older Xcom-LAN firmware versions
+        # Retrieve multiple params in one call. Note this will fail for some older Xcom-232i firmware versions
         try:
             props: list[XcomDatapoint,str] = [
-                (info_3021, 0),
-                (info_3022, 0),
-                (info_3023, 0),
+                (info_3021, SCOM_AGGREGATION_TYPE.MASTER),      # pass an aggregation_type constant
+                (info_3022, "XT1"),                             # alternatively pass a device code
+                (info_3023, 101),                               # alternatively pass a device address
             ]
             values = await api.requestValues(props)
             if values:
-                for item in values.items:
-                    info = dataset.getByNr(item.user_info_ref)
-                    logger.info(f"Multi-info {info.nr}: {item.value} {info.unit} ({info.name})")
+                for (info,aggr,val) in values:
+                    logger.info(f"Multi-info {info.nr}: {val} {info.unit} ({info.name}), aggregate_type={aggr}")
+
         except Exception as ex:
             logger.warning(ex)
 

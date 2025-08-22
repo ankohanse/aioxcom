@@ -3,7 +3,14 @@
 ##
 
 import logging
+
 from dataclasses import dataclass
+from typing import Any
+
+from .xcom_const import (
+    SCOM_AGGREGATION_TYPE,
+    XcomParamException,
+) 
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -131,6 +138,7 @@ class XcomDeviceFamilies:
         15000,                 # nr for discovery
     )
 
+
     @staticmethod
     def getById(id: str) -> XcomDeviceFamily:
         for f in XcomDeviceFamilies.getList():
@@ -138,26 +146,64 @@ class XcomDeviceFamilies:
                 return f
 
         raise XcomDeviceFamilyUnknownException(id)
-    
 
-    # Static variable to cache helper mapping
-    _addr_map = None
 
     @staticmethod
-    def _buildAddrMap():
+    def getList() -> list[XcomDeviceFamily]:
+        return [val for val in XcomDeviceFamilies.__dict__.values() if type(val) is XcomDeviceFamily]
+
+
+    # Static variables to cache helper mappings
+    _code_to_family_map: dict[str,XcomDeviceFamily] = None
+    _code_to_addr_map: dict[str,int] = None
+    _code_to_aggr_map: dict[int,int] = None
+    _addr_to_aggr_map: dict[str,int] = None
+
+    @staticmethod
+    def _buildStaticMaps():
         """Fill static variable once"""
-        if XcomDeviceFamilies._addr_map is None:
-            XcomDeviceFamilies._addr_map = {}
+        if XcomDeviceFamilies._code_to_family_map is None:
+
+            XcomDeviceFamilies._code_to_family_map = {}
+            XcomDeviceFamilies._code_to_addr_map = {}
+            XcomDeviceFamilies._code_to_aggr_map = {}
+            XcomDeviceFamilies._addr_to_aggr_map = {}
+
             for f in XcomDeviceFamilies.getList():
                 for addr in range(f.addrDevicesStart, f.addrDevicesEnd+1):
-                    XcomDeviceFamilies._addr_map[f.getCode(addr)] = addr
+                    code = f.getCode(addr)
+                    aggr = addr - f.addrDevicesStart + 1
+                    
+                    XcomDeviceFamilies._code_to_family_map[code] = f
+                    XcomDeviceFamilies._code_to_addr_map[code] = addr # XT1-XT9 -> 101-109,  VT1-VT15 -> 301-315,  VS1-VS15 -> 701-715
+                    XcomDeviceFamilies._code_to_aggr_map[code] = aggr # XT1-XT9 -> 1-9,      VT1-VT15 -> 1-15,     VS1-VS15 -> 1-15
+                    XcomDeviceFamilies._addr_to_aggr_map[addr] = aggr # 101-109 -> 1-9,      301-315  -> 1-15,     701-715  -> 1-15
+                
+                if f.addrDevicesStart != f.addrDevicesEnd:
+                    code = f.id.upper()
+                    XcomDeviceFamilies._code_to_aggr_map[code] = SCOM_AGGREGATION_TYPE.MASTER # XT -> master, VT -> master, VS -> master
 
+
+    @staticmethod
+    def getByCode(code: str) -> XcomDeviceFamily:
+        """
+        Lookup the code to find the device family
+        """
+        XcomDeviceFamilies._buildStaticMaps()
+        family = XcomDeviceFamilies._code_to_family_map.get(code, None)
+        if family:
+            return family
+
+        raise XcomDeviceCodeUnknownException(code)
+    
 
     @staticmethod
     def getAddrByCode(code: str) -> int:
-        """Lookup the code to find the addr"""
-        XcomDeviceFamilies._buildAddrMap()
-        addr = XcomDeviceFamilies._addr_map.get(code, None)
+        """
+        Lookup the code to find the addr
+        """
+        XcomDeviceFamilies._buildStaticMaps()
+        addr = XcomDeviceFamilies._code_to_addr_map.get(code, None)
         if addr is not None:
             return addr
     
@@ -165,5 +211,62 @@ class XcomDeviceFamilies:
 
 
     @staticmethod
-    def getList() -> list[XcomDeviceFamily]:
-        return [val for val in XcomDeviceFamilies.__dict__.values() if type(val) is XcomDeviceFamily]
+    def getAggregationTypeByCode(code: str) -> SCOM_AGGREGATION_TYPE:
+        """
+        Lookup the code to find the aggregation_type
+        """
+        XcomDeviceFamilies._buildStaticMaps()
+        aggr = XcomDeviceFamilies._code_to_aggr_map.get(code, None)
+        if aggr is not None:
+            return SCOM_AGGREGATION_TYPE(aggr)
+    
+        raise XcomDeviceCodeUnknownException(code)
+
+
+    @staticmethod
+    def getAggregationTypeByAddr(addr: int) -> SCOM_AGGREGATION_TYPE:
+        """
+        Lookup the device address to find the aggregation_type
+        Note that addr 601 can either be BMS or BSP. However, both result in aggregation_type=1 so we don't care...
+        """
+        XcomDeviceFamilies._buildStaticMaps()
+        aggr = XcomDeviceFamilies._addr_to_aggr_map.get(addr, None)
+        if aggr is not None:
+            return SCOM_AGGREGATION_TYPE(aggr)
+    
+        raise XcomDeviceAddrUnknownException(str)
+    
+
+    @staticmethod
+    def getAggregationTypeByAny(val: Any) -> SCOM_AGGREGATION_TYPE:
+        """
+        Convert a value into an aggregate_type value
+        Input can be:
+          - SCOM_AGGREGATION_TYPE enumeration value
+          - integer within SCOM_AGGREGATION_TYPE range
+          - Device code (like XT1, BMS, VT15) 
+          - Device address (like 101, 501, 715)
+        """
+
+        if val is None:
+            return SCOM_AGGREGATION_TYPE.MASTER
+
+        elif isinstance(val, str):
+            # Assume val is a device code
+            return XcomDeviceFamilies.getAggregationTypeByCode(val)
+
+        elif isinstance(val, int):
+            if val in SCOM_AGGREGATION_TYPE:
+                # Assume val is an integer representing an aggregate_type
+                return SCOM_AGGREGATION_TYPE(val)
+            else:
+                # Assume val is a device address
+                return XcomDeviceFamilies.getAggregationTypeByAddr(val)
+
+        else:
+            raise XcomParamException("Invalid aggregate type {val} ({type(val)})")
+
+
+
+
+

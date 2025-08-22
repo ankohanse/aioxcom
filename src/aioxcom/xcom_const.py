@@ -7,6 +7,11 @@
 from dataclasses import dataclass
 from enum import IntEnum, StrEnum
 
+
+class XcomParamException(Exception):
+    pass
+
+
 MULTI_INFO_REQ_MAX = 76
 
 class VOLTAGE(StrEnum):
@@ -187,7 +192,7 @@ class SCOM_QSP_LEVEL:
     QSP             = 0x0040
 
 ## values for aggregation_type
-class SCOM_AGGREGATION_TYPE:
+class SCOM_AGGREGATION_TYPE(IntEnum):
     MASTER          = 0x00
     DEVICE1         = 0x01
     DEVICE2         = 0x02
@@ -206,6 +211,13 @@ class SCOM_AGGREGATION_TYPE:
     DEVICE15        = 0x0F
     AVERAGE         = 0xFD
     SUM             = 0xFE
+
+    def __str__(self):
+        return self.name
+    
+    def __repr__(self):
+        return self.name
+
 
 # SCOM_ADDRESSES
 SCOM_ADDR_BROADCAST = 0

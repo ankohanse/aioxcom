@@ -11,6 +11,8 @@ from . import XcomTestClientTcp
 
 
 class TestContext:
+    __test__ = False  # Prevent pytest from collecting this class
+    
     def __init__(self):
         self.discover = None
         self.server = None
