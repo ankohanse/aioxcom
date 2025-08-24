@@ -80,6 +80,7 @@ class XcomApiBase:
         self._started = False
         self._connected = False
         self._remote_ip = None
+        self._request_id = 0
 
         # Diagnostics gathering
         self._diag_retries = {}
@@ -110,7 +111,7 @@ class XcomApiBase:
     def remote_ip(self) -> str|None:
         """Returns the IP address of the connected Xcom client, otherwise None"""
         return self._remote_ip
-
+    
 
     async def _waitConnected(self, timeout) -> bool:
         """Wait for Xcom client to connect. Or timout."""
@@ -232,7 +233,7 @@ class XcomApiBase:
             service_id = SCOM_SERVICE.READ,
             object_type = SCOM_OBJ_TYPE.MULTI_INFO,
             object_id = SCOM_OBJ_ID.MULTI_INFO,
-            property_id = SCOM_QSP_ID.MULTI_INFO,
+            property_id = self._getNextRequestId() & 0xffff,
             property_data = multi_info.getBytes(),
             dst_addr = XcomDeviceFamilies.RCC.addrDevicesStart
         )
@@ -341,6 +342,11 @@ class XcomApiBase:
         """Implemented in derived classes"""
         raise NotImplementedError()
     
+
+    def _getNextRequestId(self) -> int:
+        self._request_id += 1
+        return self._request_id
+
 
     async def _addDiagnostics(self, retries: int = None, duration: timedelta = None):
         if retries is not None:
