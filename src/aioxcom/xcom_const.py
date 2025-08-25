@@ -212,6 +212,18 @@ class SCOM_AGGREGATION_TYPE(IntEnum):
     AVERAGE         = 0xFD
     SUM             = 0xFE
 
+    @staticmethod
+    def from_str(s: str, default: int|None = None):
+        for e in SCOM_AGGREGATION_TYPE:
+            if str(e) == s.upper():
+                return e
+            
+        if default is not None:
+            return default
+        else:
+            msg = f"Unknown SCOM_AGGREGATION_TYPE: '{s}'"
+            raise Exception(msg)
+
     def __str__(self):
         return self.name
     

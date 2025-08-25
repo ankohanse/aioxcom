@@ -62,9 +62,6 @@ class XcomApiUnpackException(Exception):
 class XcomApiResponseIsError(Exception):
     """Exception to indicate an error message was received back from the xcom client"""
 
-class XcomApiParamException(Exception):
-    """Exception to indicate incorrect parameters passed to function"""
-
 
 
 ##
@@ -198,7 +195,7 @@ class XcomApiBase:
                 raise XcomApiUnpackException(msg) from None
 
                                          
-    async def requestValues(self, props: Iterable[tuple[XcomDatapoint, SCOM_AGGREGATION_TYPE|str|None]], retries = None, timeout = None, verbose=False):
+    async def requestValues(self, multi_info_req_data: XcomDataMultiInfoReq, retries = None, timeout = None, verbose=False) -> XcomDataMultiInfoRsp:
         """
         Request multiple infos in one call.
         Returns None if not connected, otherwise returns the list of requested values
@@ -212,48 +209,21 @@ class XcomApiBase:
               On older versions it results in a 'Service not supported' response from the Xcom client
         """
 
-        # Check input parameters
-        if len(props) < 1:
-            raise XcomApiParamException("No datapoints passed to requestValues")
-        if len(props) > MULTI_INFO_REQ_MAX:
-            raise XcomApiParamException(f"Too many datapoints passed to requestValues, maximum is {MULTI_INFO_REQ_MAX} in one request")
-        
-        multi_info = XcomDataMultiInfoReq()
-        for datapoint,aggr in props:
-
-            if datapoint.obj_type != OBJ_TYPE.INFO:
-                raise XcomApiParamException(f"Invalid datapoint passed to requestValues; must have obj_type INFO. Violated by datapoint '{datapoint.name}' ({parameter.nr})")
-            
-            aggregation_type = XcomDeviceFamilies.getAggregationTypeByAny(aggr)   
-
-            multi_info.append(XcomDataMultiInfoReqItem(datapoint.nr, aggregation_type))
-
         # Compose the request and send it
         request: XcomPackage = XcomPackage.genPackage(
             service_id = SCOM_SERVICE.READ,
             object_type = SCOM_OBJ_TYPE.MULTI_INFO,
             object_id = SCOM_OBJ_ID.MULTI_INFO,
             property_id = self._getNextRequestId() & 0xffff,
-            property_data = multi_info.getBytes(),
+            property_data = multi_info_req_data.pack(),
             dst_addr = XcomDeviceFamilies.RCC.addrDevicesStart
         )
 
         response = await self._sendRequest(request, retries=retries, timeout=timeout, verbose=verbose)
         if response is not None:
-            # Unpack the response value
             try:
-                rsp = XcomDataMultiInfoRsp.parseBytes(response.frame_data.service_data.property_data)
-
-                # Compose resulting list of datapoint, aggregation_type and unpacked value
-                result = []
-                for item in rsp.items:
-
-                    item_datapoint = next((dp for dp,aggr in props if dp.nr==item.user_info_ref), None)
-                    item_value = XcomData.unpack(item.value, datapoint.format)
-
-                    result.append( (item_datapoint, item.aggregation_type, item_value) )
-
-                return result
+                # Unpack the response value
+                return XcomDataMultiInfoRsp.unpack(response.frame_data.service_data.property_data, multi_info_req_data)
 
             except Exception as e:
                 msg = f"Failed to unpack response package for multi-info request, data={response.frame_data.service_data.property_data.hex()}: {e}"

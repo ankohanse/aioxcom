@@ -227,7 +227,7 @@ class XcomDeviceFamilies:
     def getAggregationTypeByAddr(addr: int) -> SCOM_AGGREGATION_TYPE:
         """
         Lookup the device address to find the aggregation_type
-        Note that addr 601 can either be BMS or BSP. However, both result in aggregation_type=1 so we don't care...
+        Note that addr 601 can either be BMS or BSP. However, both result in SCOM_AGGREGATION_TYPE=1 so we don't care...
         """
         XcomDeviceFamilies._buildStaticMaps()
         aggr = XcomDeviceFamilies._addr_to_aggr_map.get(addr, None)
@@ -236,6 +236,10 @@ class XcomDeviceFamilies:
     
         raise XcomDeviceAddrUnknownException(str)
     
+    @staticmethod
+    def getAddrByAggregationType(aggr: SCOM_AGGREGATION_TYPE, family: XcomDeviceFamily):
+        XcomDeviceFamilies._buildStaticMaps()
+        return next( (addr for addr in range(family.addrDevicesStart, family.addrDevicesEnd+1) if XcomDeviceFamilies._addr_to_aggr_map.get(addr, None) == aggr), None)
 
     @staticmethod
     def getAggregationTypeByAny(val: Any) -> SCOM_AGGREGATION_TYPE:
@@ -243,7 +247,7 @@ class XcomDeviceFamilies:
         Convert a value into an aggregate_type value
         Input can be:
           - SCOM_AGGREGATION_TYPE enumeration value
-          - integer within SCOM_AGGREGATION_TYPE range
+          - integer within SCOM_SCOM_AGGREGATION_TYPE range
           - Device code (like XT1, BMS, VT15) 
           - Device address (like 101, 501, 715)
         """
@@ -252,8 +256,12 @@ class XcomDeviceFamilies:
             return SCOM_AGGREGATION_TYPE.MASTER
 
         elif isinstance(val, str):
-            # Assume val is a device code
-            return XcomDeviceFamilies.getAggregationTypeByCode(val)
+            try:
+                # Assume val is a string representing an aggregate_type
+                return SCOM_AGGREGATION_TYPE.from_str(val, None)
+            except:
+                # Assume val is a device code
+                return XcomDeviceFamilies.getAggregationTypeByCode(val)
 
         elif isinstance(val, int):
             if val in SCOM_AGGREGATION_TYPE:

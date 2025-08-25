@@ -73,7 +73,7 @@ class XcomDatapoint:
         number = int(nr)
         name = str(name).strip()
         abbr = str(short)
-        unit = str(unit)
+        unit = unit if type(unit) is str else None
         format = FORMAT.from_str(str(fmt))
         default = float(dft) if (type(dft) is int or type(dft) is float) else "S" if (dft=="S") else None
         minimum = float(min) if (type(min) is int or type(min) is float) else "S" if (dft=="S") else None

@@ -13,12 +13,23 @@ import binascii
 import logging
 import struct
 from io import BufferedWriter, BufferedReader, BytesIO
+from typing import Any, Iterable
 
 from .xcom_const import (
     FORMAT,
-    SCOM_OBJ_TYPE,
+    MULTI_INFO_REQ_MAX,
+    OBJ_TYPE,
+    SCOM_AGGREGATION_TYPE,
     SCOM_ERROR_CODES,
+    XcomParamException,
 )
+from .xcom_datapoints import (
+    XcomDatapoint,
+)
+from .xcom_families import (
+    XcomDeviceFamilies,
+)
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,7 +74,7 @@ class XcomData:
             case FORMAT.BOOL: return bool(value)
             case FORMAT.ERROR: return int(value)
             case FORMAT.FORMAT: return int(value)
-            case FORMAT.SHORT_ENUM: int(value)
+            case FORMAT.SHORT_ENUM: return int(value)
             case FORMAT.FLOAT: return value
             case FORMAT.INT32: return int(value)
             case FORMAT.LONG_ENUM: return int(value)
@@ -74,33 +85,38 @@ class XcomData:
 
 
 class XcomDataMultiInfoReqItem():
-    user_info_ref: int
-    aggregation_type: int
+    datapoint: XcomDatapoint
+    aggregation_type: SCOM_AGGREGATION_TYPE
 
-    def __init__(self, user_info_ref: int, aggregation_type: int):
-        self.user_info_ref = user_info_ref
-        self.aggregation_type = aggregation_type
+    def __init__(self, datapoint: XcomDatapoint, aggregation_type: Any):
+
+        if datapoint.obj_type != OBJ_TYPE.INFO:
+                raise XcomParamException(f"Invalid datapoint passed to requestValues; must have obj_type INFO. Violated by datapoint '{datapoint.name}' ({datapoint.nr})")
+
+        self.datapoint = datapoint
+        self.aggregation_type = XcomDeviceFamilies.getAggregationTypeByAny(aggregation_type) 
+
+    def __str__(self) -> str:
+        return f"MultiInfoReqItem(datapoint={self.datapoint.nr}, aggregation_type={self.aggregation_type})"
 
 
 class XcomDataMultiInfoReq:
     items: list[XcomDataMultiInfoReqItem]
 
-    def __init__(self):
-        self.items = list()
+    def __init__(self, items: Iterable[XcomDataMultiInfoReqItem]):
+        if len(items) < 1:
+            raise XcomParamException("No multi-info request items passed")
+        if len(items) > MULTI_INFO_REQ_MAX:
+            raise XcomParamException(f"Too many multi-info request items passed, maximum is {MULTI_INFO_REQ_MAX} in one request")
+    
+        self.items = items
 
-    def append(self, item: XcomDataMultiInfoReqItem):
-        self.items.append(item)
-
-    def assemble(self, f: BufferedWriter):
-        _LOGGER.debug(f"XcomDataMultiInfoReq assemble {len(self.items)} items")
+    def pack(self) -> bytes:
+        f = BytesIO()
         for item in self.items:
-            writeUInt16(f, item.user_info_ref)
+            writeUInt16(f, item.datapoint.nr)
             writeUInt8(f, item.aggregation_type)
-
-    def getBytes(self) -> bytes:
-        buf = BytesIO()
-        self.assemble(buf)
-        return buf.getvalue()
+        return f.getvalue()
 
     def __len__(self) -> int:
         return 3 * len(self.items)
@@ -110,14 +126,31 @@ class XcomDataMultiInfoReq:
 
 
 class XcomDataMultiInfoRspItem():
-    user_info_ref: int
-    aggregation_type: int
-    value: bytes
+    datapoint: XcomDatapoint
+    aggregation_type: SCOM_AGGREGATION_TYPE
+    value: Any
 
-    def __init__(self, user_info_ref: int, aggregation_type: int, value: float):
-        self.user_info_ref = user_info_ref
+    def __init__(self, datapoint: XcomDatapoint, aggregation_type: SCOM_AGGREGATION_TYPE, value: Any):
+        self.datapoint = datapoint
         self.aggregation_type = aggregation_type
         self.value = value
+
+    @property
+    def addr(self):
+        family = XcomDeviceFamilies.getById(self.datapoint.family_id)
+        return XcomDeviceFamilies.getAddrByAggregationType(self.aggregation_type, family)
+
+    @property
+    def code(self):
+        family = XcomDeviceFamilies.getById(self.datapoint.family_id)
+        addr = XcomDeviceFamilies.getAddrByAggregationType(self.aggregation_type, family)
+        if addr is not None:
+            return family.getCode(addr)
+        else:
+            return str(self.aggregation_type)
+
+    def __str__(self) -> str:
+        return f"MultiInfoRspItem(datapoint={self.datapoint.nr}, aggregation_type={self.aggregation_type}, value={self.value})"
 
 
 class XcomDataMultiInfoRsp:
@@ -131,42 +164,45 @@ class XcomDataMultiInfoRsp:
         self.items = items
 
     @staticmethod
-    def parse(f: BufferedReader, len: int):
+    def unpack(buf: bytes, req_data: XcomDataMultiInfoReq):
+        f = BytesIO(buf)
+        f_len = f.getbuffer().nbytes
+
         flags = readUInt32(f)
         datetime= readUInt32(f)
         items = list()
-        len -= 8
+        f_len -= 8
 
-        while len >= 7:
-            item = XcomDataMultiInfoRspItem(
-                user_info_ref = readUInt16(f),
-                aggregation_type = readUInt8(f),
-                value = f.read(4),
-            )
-            len -= 7
+        while f_len >= 7:
+            user_info_ref = readUInt16(f)
+            aggr = readUInt8(f)
+            data = readBytes(f, 4)
+            f_len -= 7
 
-            items.append(item)
+            datapoint = next((item.datapoint for item in req_data.items if item.datapoint.nr==user_info_ref), None)
+            aggregation_type = SCOM_AGGREGATION_TYPE(aggr)
+            value = XcomData.unpack(data, FORMAT.FLOAT)
+            val = XcomData.cast(value, datapoint.format)
+
+            items.append(XcomDataMultiInfoRspItem(
+                datapoint,
+                aggregation_type,
+                val
+            ))
 
         return XcomDataMultiInfoRsp(flags, datetime, items)
-    
-    @staticmethod
-    def parseBytes(buf: bytes):
-        bio = BytesIO(buf)
-        return XcomDataMultiInfoRsp.parse(bio, bio.getbuffer().nbytes)    
-        
-    def assemble(self, f: BufferedWriter):
-        _LOGGER.debug(f"XcomDataMultiInfoRsp assemble {len(self.items)} items")
+
+    def pack(self) -> bytes:
+        f = BytesIO()
         writeUInt32(f, self.flags)
         writeUInt32(f, self.datetime)
         for item in self.items:
-            writeUInt16(f, item.user_info_ref)
+            data = XcomData.pack(item.value, FORMAT.FLOAT)
+            writeUInt16(f, item.datapoint.nr)
             writeUInt8(f, item.aggregation_type)
-            f.write(item.value)
+            writeBytes(f, data)
 
-    def getBytes(self) -> bytes:
-        buf = BytesIO()
-        self.assemble(buf)
-        return buf.getvalue()
+        return f.getvalue()
     
     def __len__(self) -> int:
         return 2*4 + len(self.items)*(2+1+4)
@@ -188,7 +224,7 @@ class XcomDataMessageRsp:
         msg_type= readUInt16(f)
         src = readUInt32(f)
         timestamp = readUInt32(f)
-        value = f.read(4)
+        value = readBytes(f, 4)
 
         return XcomDataMessageRsp(msg_total, msg_type, src, timestamp, value)
     
@@ -223,7 +259,7 @@ class XcomService:
             object_type   = readUInt16(f),
             object_id     = readUInt32(f),
             property_id   = readUInt16(f),
-            property_data = f.read(-1),
+            property_data = readBytes(f, -1),
         )
 
     def __init__(self, 
@@ -239,7 +275,7 @@ class XcomService:
         writeUInt16(f, self.object_type)
         writeUInt32(f, self.object_id)
         writeUInt16(f, self.property_id)
-        f.write(self.property_data)
+        writeBytes(f, self.property_data)
 
     def __len__(self) -> int:
         return 2*2 + 4 + len(self.property_data)
@@ -348,7 +384,7 @@ class XcomPackage:
         # package sometimes starts with 0xff
         skipped = bytearray(b'')
         while True:
-            sb = await f.read(1)
+            sb = await readBytes(f, 1)
             if sb == XcomPackage.start_byte:
                 break
 
@@ -357,13 +393,13 @@ class XcomPackage:
         if verbose and len(skipped) > 0:
             _LOGGER.debug(f"skip {len(skipped)} bytes until start-byte ({binascii.hexlify(skipped).decode('ascii')})")
 
-        h_raw = await f.read(XcomHeader.length)
-        h_chk = await f.read(2)
+        h_raw = await readBytes(f, XcomHeader.length)
+        h_chk = await readBytes(f, 2)
         assert checksum(h_raw) == h_chk
         header = XcomHeader.parseBytes(h_raw)
 
-        f_raw = await f.read(header.data_length)
-        f_chk = await f.read(2)
+        f_raw = await readBytes(f, header.data_length)
+        f_chk = await readBytes(f, 2)
         assert checksum(f_raw) == f_chk
         frame = XcomFrame.parseBytes(f_raw)
 
@@ -408,18 +444,18 @@ class XcomPackage:
         self.frame_data = frame_data
 
     def assemble(self, f: BufferedWriter):
-        f.write(self.start_byte)
+        writeBytes(f, self.start_byte)
 
         header = self.header.getBytes()
-        f.write(header)
-        f.write(checksum(header))
+        writeBytes(f, header)
+        writeBytes(f, checksum(header))
 
         data = self.frame_data.getBytes()
-        f.write(data)
-        f.write(checksum(data))
+        writeBytes(f, data)
+        writeBytes(f, checksum(data))
 
         # Don't write delimeter, seems not needed as we send the package in one whole chunk
-        #f.write(self.delimeters)
+        #writeBytes(f, self.delimeters)
 
     def getBytes(self) -> bytes:
         buf = BytesIO()
@@ -488,3 +524,10 @@ def readUInt8(f: BufferedReader) -> int:
 
 def writeUInt8(f: BufferedWriter, value: int) -> int:
     return f.write(value.to_bytes(1, byteorder="little", signed=False))
+
+
+def readBytes(f: BufferedReader, length: int) -> int:
+    return f.read(length)
+
+def writeBytes(f: BufferedWriter, value: bytes) -> int:
+    return f.write(value)

@@ -303,7 +303,7 @@ async def test_requestMulti(name, exp_src_addr, exp_dst_addr, exp_svc_id, exp_ob
         assert len(values) == len(exp_rsp.items)
 
         for (dataset,aggr,value) in values:
-            exp_item = next((i for i in exp_rsp.items if i.user_info_ref==dataset.nr and i.aggregation_type==aggr), None)
+            exp_item = next((i for i in exp_rsp.items if i.user_info_ref==dataset.nr and i.SCOM_AGGREGATION_TYPE==aggr), None)
             assert exp_item is not None
             assert exp_item.value is not None
     else:

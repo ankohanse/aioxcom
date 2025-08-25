@@ -2,7 +2,7 @@ import asyncio
 import logging
 import sys
 
-from aioxcom import XcomApiTcp, XcomDataset, XcomDatapoint
+from aioxcom import XcomApiTcp, XcomDataset, XcomDatapoint, XcomDataMultiInfoReq, XcomDataMultiInfoReqItem
 from aioxcom import VOLTAGE, SCOM_AGGREGATION_TYPE
 from aioxcom.xcom_protocol import XcomData
 
@@ -28,27 +28,29 @@ async def main():
 
         # Retrieve info #3023 from the first Xtender (Output power)
         value = await api.requestValue(info_3023, "XT1")    # xt address range is 101 to 109, or use "XT1" to "XT9"
-        logger.info(f"XT1 {info_3023.nr}: {value} {info_3023.unit} ({info_3023.name})")
+        logger.info(f"XT1 {info_3023.nr}: {value} {info_3023.unit or ''} ({info_3023.name})")
 
         # Retrieve info #7002 from BSP (State of Charge)
         value = await api.requestValue(info_7002, "BSP")    # bsp address range is only 601, or use "BSP"
-        logger.info(f"BSP {info_7002.nr}: {value} {info_7002.unit} ({info_7002.name})")
+        logger.info(f"BSP {info_7002.nr}: {value} {info_7002.unit or ''} ({info_7002.name})")
 
         # Retrieve param #5012 from RCC (User Level)
         value = await api.requestValue(param_5012, "RCC")    # rcc address range is only 501, or use "RCC"
-        logger.info(f"RCC {param_5012.nr}: {param_5012.enum_value(value)} ({param_5012.name})")
+        logger.info(f"RCC {param_5012.nr}: {param_5012.enum_value(value)} {param_5012.unit or ''} ({param_5012.name})")
 
         # Retrieve multiple params in one call. Note this will fail for some older Xcom-232i firmware versions
         try:
-            props: list[XcomDatapoint,str] = [
-                (info_3021, SCOM_AGGREGATION_TYPE.MASTER),      # pass an aggregation_type constant
-                (info_3022, "XT1"),                             # alternatively pass a device code
-                (info_3023, 101),                               # alternatively pass a device address
-            ]
-            values = await api.requestValues(props)
-            if values:
-                for (info,aggr,val) in values:
-                    logger.info(f"Multi-info {info.nr}: {val} {info.unit} ({info.name}), aggregate_type={aggr}")
+            req = XcomDataMultiInfoReq([
+                XcomDataMultiInfoReqItem(info_3021, SCOM_AGGREGATION_TYPE.SUM),    # pass an SCOM_AGGREGATION_TYPE constant
+                XcomDataMultiInfoReqItem(info_3022, "XT1"),                        # alternatively pass a device code
+                XcomDataMultiInfoReqItem(info_3023, 101),                          # alternatively pass a device address
+            ])
+            rsp = await api.requestValues(req)
+            if rsp:
+                logger.info(f"Multi-info flags: {rsp.flags}")
+                logger.info(f"Multi-info datetime: {rsp.datetime}")
+                for item in rsp.items:
+                    logger.info(f"Multi-info {item.code} {item.datapoint.nr}: {item.value} {item.datapoint.unit or ''} ({item.datapoint.name})")
 
         except Exception as ex:
             logger.warning(ex)

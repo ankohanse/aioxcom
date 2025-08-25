@@ -1,15 +1,20 @@
 import math
 import pytest
 import pytest_asyncio
-from aioxcom import XcomPackage, XcomData, FORMAT
-from aioxcom import SCOM_SERVICE, SCOM_OBJ_TYPE, SCOM_QSP_ID, SCOM_ERROR_CODES
-from aioxcom.xcom_protocol import XcomDataMultiInfoReq, XcomDataMultiInfoReqItem
+from aioxcom import XcomPackage, XcomDataset, XcomData, XcomDataMultiInfoReq, XcomDataMultiInfoReqItem, XcomDataMultiInfoRsp, XcomDataMultiInfoRspItem
+from aioxcom import FORMAT, VOLTAGE, SCOM_SERVICE, SCOM_OBJ_TYPE, SCOM_QSP_ID, SCOM_AGGREGATION_TYPE
 
 
+@pytest_asyncio.fixture
+async def data_multi_info():
+    dataset = await XcomDataset.create(VOLTAGE.AC240)
+    info_3031 = dataset.getByNr(3031)
+    info_3032 = dataset.getByNr(3032)
 
-test_protocol_props = XcomDataMultiInfoReq()
-test_protocol_props.append(XcomDataMultiInfoReqItem(3031, 0x00))
-test_protocol_props.append(XcomDataMultiInfoReqItem(3032, 0x00))
+    yield XcomDataMultiInfoReq([
+        XcomDataMultiInfoReqItem(info_3031, SCOM_AGGREGATION_TYPE.MASTER),
+        XcomDataMultiInfoReqItem(info_3032, SCOM_AGGREGATION_TYPE.DEVICE1),
+    ])
 
 @pytest_asyncio.fixture
 async def package_read_info():
@@ -48,13 +53,13 @@ async def package_write_param():
     )
 
 @pytest_asyncio.fixture
-async def package_read_multiinfo():
+async def package_read_multiinfo(data_multi_info):
     yield XcomPackage.genPackage(
         service_id = SCOM_SERVICE.READ,
         object_type = SCOM_OBJ_TYPE.MULTI_INFO,
         object_id = 0x01,
         property_id = SCOM_QSP_ID.NONE,
-        property_data = test_protocol_props.getBytes(),
+        property_data = data_multi_info.pack(),
         src_addr = 1,
         dst_addr = 501,
     )
@@ -62,18 +67,22 @@ async def package_read_multiinfo():
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("package_read_info", "package_read_param", "package_write_param", "package_read_multiinfo")
+@pytest.mark.usefixtures("package_read_info", "package_read_param", "package_write_param", "package_read_multiinfo", "data_multi_info")
 @pytest.mark.parametrize(
     "fixture, exp_src_addr, exp_dst_addr, exp_svc_id, exp_svc_flags, exp_obj_type, exp_obj_id, exp_prop_id, exp_prop_data",
     [
         ("package_read_info",      1, 101, SCOM_SERVICE.READ,  0x00, SCOM_OBJ_TYPE.INFO,       0x01020304, SCOM_QSP_ID.VALUE,         b''),
         ("package_read_param",     1, 101, SCOM_SERVICE.READ,  0x00, SCOM_OBJ_TYPE.PARAMETER,  0x01020304, SCOM_QSP_ID.UNSAVED_VALUE, b''),
         ("package_write_param",    1, 101, SCOM_SERVICE.WRITE, 0x00, SCOM_OBJ_TYPE.PARAMETER,  0x01020304, SCOM_QSP_ID.UNSAVED_VALUE, b'0A0B0C0D'),
-        ("package_read_multiinfo", 1, 501, SCOM_SERVICE.READ,  0x00, SCOM_OBJ_TYPE.MULTI_INFO, 0x01,       SCOM_QSP_ID.NONE,          test_protocol_props.getBytes())
+        ("package_read_multiinfo", 1, 501, SCOM_SERVICE.READ,  0x00, SCOM_OBJ_TYPE.MULTI_INFO, 0x01,       SCOM_QSP_ID.NONE,          "data_multi_info.pack()")
     ]
 )
 async def test_package_props(fixture, exp_src_addr, exp_dst_addr, exp_svc_id, exp_svc_flags, exp_obj_type, exp_obj_id, exp_prop_id, exp_prop_data, request):
     package: XcomPackage = request.getfixturevalue(fixture)
+    data_multi_info = request.getfixturevalue("data_multi_info")
+
+    if exp_prop_data == "data_multi_info.pack()":
+        exp_prop_data = data_multi_info.pack()
 
     assert package.header.src_addr == exp_src_addr
     assert package.header.dst_addr == exp_dst_addr
@@ -176,3 +185,43 @@ def test_data(name, value, format, expected_length):
             assert clone == pytest.approx(value, abs=0.01)
         case _:
             assert clone == value
+
+
+@pytest.mark.usefixtures("data_multi_info")
+def test_data_multiinfo(request):
+    data_multi_info: XcomPackage = request.getfixturevalue("data_multi_info")
+
+    # test pack request
+    buf = data_multi_info.pack()
+
+    assert buf is not None
+    assert len(buf) == len(data_multi_info.items) * 3
+
+    # test pack response
+    rsp = XcomDataMultiInfoRsp(
+        flags = 123,
+        datetime = 456,
+        items = [ XcomDataMultiInfoRspItem(req.datapoint, req.aggregation_type, 7) for req in data_multi_info.items ],
+    )
+    buf = rsp.pack()
+
+    assert buf is not None
+    assert len(buf) == len(data_multi_info.items) * 7 + 8
+
+    # test unpack response
+    clone = XcomDataMultiInfoRsp.unpack(buf, req_data=data_multi_info)
+
+    assert clone is not None
+    assert type(clone) == type(rsp)
+    assert clone.flags == rsp.flags
+    assert clone.datetime == rsp.datetime
+    assert len(clone.items) == len(rsp.items)
+
+    for clone_item in clone.items:
+        assert clone_item.datapoint is not None
+        rsp_item = next((item for item in rsp.items if item.datapoint.nr == clone_item.datapoint.nr), None)    
+        assert rsp_item is not None
+
+        assert clone_item.aggregation_type == rsp_item.aggregation_type
+        assert clone_item.value == rsp_item.value
+        assert clone_item.code is not None
