@@ -5,8 +5,8 @@ import pytest_asyncio
 
 from aioxcom import XcomApiTcp, XcomDataset, XcomData, XcomPackage
 from aioxcom import XcomApiTimeoutException, XcomApiResponseIsError
-from aioxcom import XcomDataMultiInfoReq, XcomDataMultiInfoReqItem, XcomDataMultiInfoRsp, XcomDataMultiInfoRspItem
-from aioxcom import XcomVoltage, XcomFormat, ScomService, ScomObjType, ScomObjId, ScomQspId, XcomAggregationType, ScomErrorCode
+from aioxcom import XcomMultiInfoReq, XcomMultiInfoReqItem, XcomMultiInfoRsp, XcomMultiInfoRspItem
+from aioxcom import XcomVoltage, XcomFormat, XcomAggregationType, ScomService, ScomObjType, ScomObjId, ScomQspId, ScomAddress, ScomErrorCode
 from . import XcomTestClientTcp
 
 
@@ -229,9 +229,9 @@ async def test_updateValue(name, test_nr, test_dest, test_value_update, exp_dst_
 @pytest.mark.parametrize(
     "name, exp_src_addr, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_except",
     [
-        ("request info ok",      1, 501, ScomService.READ, ScomObjType.MULTI_INFO, ScomObjId.MULTI_INFO, ScomQspId.MULTI_INFO, 0x02, None, None),
-        ("request info err",     1, 501, ScomService.READ, ScomObjType.MULTI_INFO, ScomObjId.MULTI_INFO, ScomQspId.MULTI_INFO, 0x03, XcomData.pack(ScomErrorCode.READ_PROPERTY_FAILED, XcomFormat.ERROR), XcomApiResponseIsError),
-        ("request info timeout", 1, 501, ScomService.READ, ScomObjType.MULTI_INFO, ScomObjId.MULTI_INFO, ScomQspId.MULTI_INFO, 0x00, XcomData.pack(1234.0, XcomFormat.FLOAT), XcomApiTimeoutException),
+        ("request info ok",      ScomAddress.SOURCE, 501, ScomService.READ, ScomObjType.MULTI_INFO, ScomObjId.MULTI_INFO, ScomQspId.MULTI_INFO, 0x02, None, None),
+        ("request info err",     ScomAddress.SOURCE, 501, ScomService.READ, ScomObjType.MULTI_INFO, ScomObjId.MULTI_INFO, ScomQspId.MULTI_INFO, 0x03, XcomData.pack(ScomErrorCode.READ_PROPERTY_FAILED, XcomFormat.ERROR), XcomApiResponseIsError),
+        ("request info timeout", ScomAddress.SOURCE, 501, ScomService.READ, ScomObjType.MULTI_INFO, ScomObjId.MULTI_INFO, ScomQspId.MULTI_INFO, 0x00, XcomData.pack(1234.0, XcomFormat.FLOAT), XcomApiTimeoutException),
     ]
 )
 async def test_requestMulti(name, exp_src_addr, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_except, request):
@@ -248,18 +248,18 @@ async def test_requestMulti(name, exp_src_addr, exp_dst_addr, exp_svc_id, exp_ob
 
     dataset = await XcomDataset.create(XcomVoltage.AC240)
 
-    req_data = XcomDataMultiInfoReq([
-        XcomDataMultiInfoReqItem(dataset.getByNr(3021), XcomAggregationType.MASTER),
-        XcomDataMultiInfoReqItem(dataset.getByNr(3022), 'XT1'),
-        XcomDataMultiInfoReqItem(dataset.getByNr(3023), 101),
+    req_data = XcomMultiInfoReq([
+        XcomMultiInfoReqItem(dataset.getByNr(3021), XcomAggregationType.MASTER),
+        XcomMultiInfoReqItem(dataset.getByNr(3022), 'XT1'),
+        XcomMultiInfoReqItem(dataset.getByNr(3023), 101),
     ])
-    exp_rsp_data = XcomDataMultiInfoRsp(
+    exp_rsp_data = XcomMultiInfoRsp(
         flags = 0x00, 
         datetime = 0, 
         items=[
-            XcomDataMultiInfoRspItem(dataset.getByNr(3021), XcomAggregationType.MASTER, 12.3),
-            XcomDataMultiInfoRspItem(dataset.getByNr(3022), XcomAggregationType.DEVICE1, 45.6),
-            XcomDataMultiInfoRspItem(dataset.getByNr(3023), XcomAggregationType.DEVICE1, 78.9),
+            XcomMultiInfoRspItem(dataset.getByNr(3021), XcomAggregationType.MASTER, 12.3),
+            XcomMultiInfoRspItem(dataset.getByNr(3022), XcomAggregationType.DEVICE1, 45.6),
+            XcomMultiInfoRspItem(dataset.getByNr(3023), XcomAggregationType.DEVICE1, 78.9),
         ]
     )
 

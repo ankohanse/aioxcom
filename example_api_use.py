@@ -2,7 +2,7 @@ import asyncio
 import logging
 import sys
 
-from aioxcom import XcomApiTcp, XcomDataset, XcomDatapoint, XcomData, XcomDataMultiInfoReq, XcomDataMultiInfoReqItem
+from aioxcom import XcomApiTcp, XcomDataset, XcomDatapoint, XcomData, XcomMultiInfoReq, XcomMultiInfoReqItem
 from aioxcom import XcomVoltage, XcomAggregationType
 
 # Setup logging to StdOut
@@ -39,10 +39,10 @@ async def main():
 
         # Retrieve multiple params in one call. Note this will fail for some older Xcom-232i firmware versions
         try:
-            req = XcomDataMultiInfoReq([
-                XcomDataMultiInfoReqItem(info_3021, XcomAggregationType.SUM),      # pass an XcomAggregationType constant
-                XcomDataMultiInfoReqItem(info_3022, "XT1"),                        # alternatively pass a device code
-                XcomDataMultiInfoReqItem(info_3023, 101),                          # alternatively pass a device address
+            req = XcomMultiInfoReq([
+                XcomMultiInfoReqItem(info_3021, XcomAggregationType.SUM),      # pass an XcomAggregationType constant
+                XcomMultiInfoReqItem(info_3022, "XT1"),                        # alternatively pass a device code
+                XcomMultiInfoReqItem(info_3023, 101),                          # alternatively pass a device address
             ])
             rsp = await api.requestValues(req)
             if rsp:

@@ -12,8 +12,6 @@ class XcomParamException(Exception):
     pass
 
 
-MULTI_INFO_REQ_MAX = 76
-
 class XcomVoltage(StrEnum):
     AC120 = "120 Vac"
     AC240 = "240 Vac"
@@ -105,7 +103,7 @@ class XcomFormat(StrEnum):
     def __repr__(self):
         return self.name
 
-## values for aggregation_type
+### values for aggregation_type
 class XcomAggregationType(IntEnum):
     MASTER          = 0x00
     DEVICE1         = 0x01
@@ -143,6 +141,14 @@ class XcomAggregationType(IntEnum):
     
     def __repr__(self):
         return self.name
+
+### values XcomMultiInfoRsp.flags
+class XcomMultiInfoFlags(IntEnum):
+    XCOM_GSM    = 0x00000010, # XCOM-LAN if 0
+    XT_PRESENT  = 0x00000020,
+    BSP_PRESENT = 0x00000040,
+    VT_PRESENT  = 0x00000080,
+    VS_PRESENT  = 0x00000100,
 
 ### object_type (internal)
 class ScomObjType:
@@ -204,6 +210,7 @@ class ScomQspLevel:
 ### addresses (internal)
 class ScomAddress:
     BROADCAST = 0
+    SOURCE    = 1
 
 ### error codes (internal)
 class ScomErrorCode:

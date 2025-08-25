@@ -18,21 +18,23 @@ from .xcom_const import (
     ScomService,
     ScomQspId,
     ScomErrorCode,
-    MULTI_INFO_REQ_MAX,
 )
 from .xcom_protocol import (
     XcomPackage,
+)
+from .xcom_data import (
     XcomData,
-    XcomDataMultiInfoReq,
-    XcomDataMultiInfoReqItem,
-    XcomDataMultiInfoRsp,
-    XcomDataMultiInfoRspItem,
     XcomDataMessageRsp,
+)
+from .xcom_multi_info import (
+    XcomMultiInfoReq,
+    XcomMultiInfoReqItem,
+    XcomMultiInfoRsp,
+    XcomMultiInfoRspItem,
 )
 from .xcom_datapoints import (
     XcomDatapoint,
 )
-
 from .xcom_families import (
     XcomDeviceFamilies
 )
@@ -195,7 +197,7 @@ class XcomApiBase:
                 raise XcomApiUnpackException(msg) from None
 
                                          
-    async def requestValues(self, multi_info_req_data: XcomDataMultiInfoReq, retries = None, timeout = None, verbose=False) -> XcomDataMultiInfoRsp:
+    async def requestValues(self, multi_info_req_data: XcomMultiInfoReq, retries = None, timeout = None, verbose=False) -> XcomMultiInfoRsp:
         """
         Request multiple infos in one call.
         Returns None if not connected, otherwise returns the list of requested values
@@ -223,7 +225,7 @@ class XcomApiBase:
         if response is not None:
             try:
                 # Unpack the response value
-                return XcomDataMultiInfoRsp.unpack(response.frame_data.service_data.property_data, multi_info_req_data)
+                return XcomMultiInfoRsp.unpack(response.frame_data.service_data.property_data, multi_info_req_data)
 
             except Exception as e:
                 msg = f"Failed to unpack response package for multi-info request, data={response.frame_data.service_data.property_data.hex()}: {e}"
