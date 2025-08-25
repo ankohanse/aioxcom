@@ -6,7 +6,7 @@ import pytest_asyncio
 
 from aioxcom import XcomDiscover, XcomApiTcp, XcomDataset, XcomData, XcomPackage
 from aioxcom import XcomApiTimeoutException, XcomApiResponseIsError
-from aioxcom import VOLTAGE, FORMAT, SCOM_SERVICE, SCOM_OBJ_TYPE, SCOM_QSP_ID, SCOM_ERROR_CODES
+from aioxcom import XcomVoltage, XcomFormat, ScomService, ScomObjType, ScomQspId, ScomErrorCode
 from . import XcomTestClientTcp
 
 
@@ -61,11 +61,11 @@ class TestContext:
                     # Make a deep copy of the request and turn it into a response
                     if req.header.dst_addr not in rsp_dest:
                        flags = 0x03
-                       data = XcomData.pack(SCOM_ERROR_CODES.DEVICE_NOT_FOUND, FORMAT.ERROR)
+                       data = XcomData.pack(ScomErrorCode.DEVICE_NOT_FOUND, XcomFormat.ERROR)
 
                     elif str(req.frame_data.service_data.object_id) not in rsp_dict:
                         flags = 0x03
-                        data = XcomData.pack(SCOM_ERROR_CODES.READ_PROPERTY_FAILED, FORMAT.ERROR)
+                        data = XcomData.pack(ScomErrorCode.READ_PROPERTY_FAILED, XcomFormat.ERROR)
 
                     else:
                         flags = 0x02
@@ -101,18 +101,18 @@ async def context():
 @pytest.mark.parametrize(
     "name, rsp_dest, rsp_dict, exp_devices",
     [
-        ("none",        [],             { "3000": XcomData.pack(1234.0, FORMAT.FLOAT) },  []),
-        ("xt1",         [101],          { "3000": XcomData.pack(1234.0, FORMAT.FLOAT) },  ["XT1"]),
-        ("xt1,xt2,xt3", [101,102,103],  { "3000": XcomData.pack(1234.0, FORMAT.FLOAT) },  ["XT1", "XT2", "XT3"]),
-        ("l1",          [191],          { "3000": XcomData.pack(1234.0, FORMAT.FLOAT) },  ["L1"]),
-        ("l1,l2,l3",    [191,192,193],  { "3000": XcomData.pack(1234.0, FORMAT.FLOAT) },  ["L1", "L2", "L3"]),
-        ("rcc",         [501],          { "5002": XcomData.pack(1234.0, FORMAT.FLOAT) },  ["RCC"]),
-        ("bsp",         [601],          { "7036": XcomData.pack(1234.0, FORMAT.FLOAT) },  ["BSP"]),
-        ("bms",         [601],          { "7054": XcomData.pack(1234.0, FORMAT.FLOAT) },  ["BMS"]),
-        ("vt1",         [301],          { "11000": XcomData.pack(1234.0, FORMAT.FLOAT) }, ["VT1"]),
-        ("vt1,vt2",     [301,302],      { "11000": XcomData.pack(1234.0, FORMAT.FLOAT) }, ["VT1", "VT2"]),
-        ("vs1",         [701],          { "15000": XcomData.pack(1234.0, FORMAT.FLOAT) }, ["VS1"]),
-        ("vs1,vs2",     [701,702],      { "15000": XcomData.pack(1234.0, FORMAT.FLOAT) }, ["VS1", "VS2"]),
+        ("none",        [],             { "3000": XcomData.pack(1234.0, XcomFormat.FLOAT) },  []),
+        ("xt1",         [101],          { "3000": XcomData.pack(1234.0, XcomFormat.FLOAT) },  ["XT1"]),
+        ("xt1,xt2,xt3", [101,102,103],  { "3000": XcomData.pack(1234.0, XcomFormat.FLOAT) },  ["XT1", "XT2", "XT3"]),
+        ("l1",          [191],          { "3000": XcomData.pack(1234.0, XcomFormat.FLOAT) },  ["L1"]),
+        ("l1,l2,l3",    [191,192,193],  { "3000": XcomData.pack(1234.0, XcomFormat.FLOAT) },  ["L1", "L2", "L3"]),
+        ("rcc",         [501],          { "5002": XcomData.pack(1234.0, XcomFormat.FLOAT) },  ["RCC"]),
+        ("bsp",         [601],          { "7036": XcomData.pack(1234.0, XcomFormat.FLOAT) },  ["BSP"]),
+        ("bms",         [601],          { "7054": XcomData.pack(1234.0, XcomFormat.FLOAT) },  ["BMS"]),
+        ("vt1",         [301],          { "11000": XcomData.pack(1234.0, XcomFormat.FLOAT) }, ["VT1"]),
+        ("vt1,vt2",     [301,302],      { "11000": XcomData.pack(1234.0, XcomFormat.FLOAT) }, ["VT1", "VT2"]),
+        ("vs1",         [701],          { "15000": XcomData.pack(1234.0, XcomFormat.FLOAT) }, ["VS1"]),
+        ("vs1,vs2",     [701,702],      { "15000": XcomData.pack(1234.0, XcomFormat.FLOAT) }, ["VS1", "VS2"]),
     ]
 )
 async def test_discover_devices(name, rsp_dest, rsp_dict, exp_devices, request):
@@ -128,7 +128,7 @@ async def test_discover_devices(name, rsp_dest, rsp_dict, exp_devices, request):
     assert context.client.connected == True
 
     # Once the server is started, we can use it to create the discovery helper
-    dataset = await XcomDataset.create(VOLTAGE.AC240)
+    dataset = await XcomDataset.create(XcomVoltage.AC240)
     discover = XcomDiscover(api=context.server, dataset=dataset)
 
     # Start 2 parallel tasks, for server and for client
@@ -165,44 +165,44 @@ async def test_discover_devices(name, rsp_dest, rsp_dict, exp_devices, request):
     "name, rsp_dest, rsp_dict, exp_code, exp_model, exp_hw_version, exp_sw_version, exp_fid",
     [
         ("xt1 none",    [101], {
-                            "3000": XcomData.pack(1234.0, FORMAT.FLOAT)  # detect
+                            "3000": XcomData.pack(1234.0, XcomFormat.FLOAT)  # detect
                         }, "XT1", None, None, None, None),
         ("xt1 ext",     [101], {
-                            "3000": XcomData.pack(1234.0, FORMAT.FLOAT), # detect
-                            "3124": XcomData.pack(0x01, FORMAT.FLOAT),   # device_model
-                            "3129": XcomData.pack(0x0203, FORMAT.FLOAT), # hw_version
-                            "3132": XcomData.pack(0x0405, FORMAT.FLOAT), # hw_version
-                            "3130": XcomData.pack(0x0607, FORMAT.FLOAT), # sw_version
-                            "3131": XcomData.pack(0x0809, FORMAT.FLOAT), # sw_version
-                            "3156": XcomData.pack(0x0908, FORMAT.FLOAT), # fid
-                            "3157": XcomData.pack(0x0706, FORMAT.FLOAT), # fid
+                            "3000": XcomData.pack(1234.0, XcomFormat.FLOAT), # detect
+                            "3124": XcomData.pack(0x01, XcomFormat.FLOAT),   # device_model
+                            "3129": XcomData.pack(0x0203, XcomFormat.FLOAT), # hw_version
+                            "3132": XcomData.pack(0x0405, XcomFormat.FLOAT), # hw_version
+                            "3130": XcomData.pack(0x0607, XcomFormat.FLOAT), # sw_version
+                            "3131": XcomData.pack(0x0809, XcomFormat.FLOAT), # sw_version
+                            "3156": XcomData.pack(0x0908, XcomFormat.FLOAT), # fid
+                            "3157": XcomData.pack(0x0706, XcomFormat.FLOAT), # fid
                         }, "XT1", "XTH", "2.3 / 4.5", "6.8.9", "09080706"),
         ("bsp ext",     [601], {
-                            "7036": XcomData.pack(1.0, FORMAT.FLOAT),    # detect
-                            "7034": XcomData.pack(10241, FORMAT.FLOAT),  # device_model
-                            "7036": XcomData.pack(0X0102, FORMAT.FLOAT), # hw_version
-                            "7037": XcomData.pack(0X0304, FORMAT.FLOAT), # sw_version      
-                            "7038": XcomData.pack(0X0506, FORMAT.FLOAT), # sw_version
-                            "7048": XcomData.pack(0x0708, FORMAT.FLOAT), # fid
-                            "7049": XcomData.pack(0x0901, FORMAT.FLOAT), # fid
+                            "7036": XcomData.pack(1.0, XcomFormat.FLOAT),    # detect
+                            "7034": XcomData.pack(10241, XcomFormat.FLOAT),  # device_model
+                            "7036": XcomData.pack(0X0102, XcomFormat.FLOAT), # hw_version
+                            "7037": XcomData.pack(0X0304, XcomFormat.FLOAT), # sw_version      
+                            "7038": XcomData.pack(0X0506, XcomFormat.FLOAT), # sw_version
+                            "7048": XcomData.pack(0x0708, XcomFormat.FLOAT), # fid
+                            "7049": XcomData.pack(0x0901, XcomFormat.FLOAT), # fid
                         }, "BSP", None, "1.2", "3.5.6", "07080901"),
         ("vt1 ext",     [301], {
-                            "11000": XcomData.pack(1234.0, FORMAT.FLOAT), #detect
-                            "11047": XcomData.pack(9079, FORMAT.FLOAT),   # device_model
-                            "11049": XcomData.pack(0X0102, FORMAT.FLOAT), # hw_version
-                            "11050": XcomData.pack(0X0304, FORMAT.FLOAT), # sw_version
-                            "11051": XcomData.pack(0X0506, FORMAT.FLOAT), # sw_version
-                            "11067": XcomData.pack(0x0708, FORMAT.FLOAT), # fid
-                            "11068": XcomData.pack(0x0901, FORMAT.FLOAT), # fid
+                            "11000": XcomData.pack(1234.0, XcomFormat.FLOAT), #detect
+                            "11047": XcomData.pack(9079, XcomFormat.FLOAT),   # device_model
+                            "11049": XcomData.pack(0X0102, XcomFormat.FLOAT), # hw_version
+                            "11050": XcomData.pack(0X0304, XcomFormat.FLOAT), # sw_version
+                            "11051": XcomData.pack(0X0506, XcomFormat.FLOAT), # sw_version
+                            "11067": XcomData.pack(0x0708, XcomFormat.FLOAT), # fid
+                            "11068": XcomData.pack(0x0901, XcomFormat.FLOAT), # fid
                         }, "VT1", None, "1.2", "3.5.6", "07080901"),
         ("vs1 ext",     [701], {
-                            "15000": XcomData.pack(1234.0, FORMAT.FLOAT), # detect
-                            "15074": XcomData.pack(12801, FORMAT.FLOAT),  # device_model
-                            "15076": XcomData.pack(0X0102, FORMAT.FLOAT), # hw_version
-                            "15077": XcomData.pack(0X0304, FORMAT.FLOAT), # sw_version
-                            "15078": XcomData.pack(0X0506, FORMAT.FLOAT), # sw_version
-                            "15102": XcomData.pack(0x0708, FORMAT.FLOAT), # fid 
-                            "15103": XcomData.pack(0x0901, FORMAT.FLOAT), # fid  
+                            "15000": XcomData.pack(1234.0, XcomFormat.FLOAT), # detect
+                            "15074": XcomData.pack(12801, XcomFormat.FLOAT),  # device_model
+                            "15076": XcomData.pack(0X0102, XcomFormat.FLOAT), # hw_version
+                            "15077": XcomData.pack(0X0304, XcomFormat.FLOAT), # sw_version
+                            "15078": XcomData.pack(0X0506, XcomFormat.FLOAT), # sw_version
+                            "15102": XcomData.pack(0x0708, XcomFormat.FLOAT), # fid 
+                            "15103": XcomData.pack(0x0901, XcomFormat.FLOAT), # fid  
                         }, "VS1", "VS120", "1.2", "3.5.6", "07080901"),
     ]
 )
@@ -219,7 +219,7 @@ async def test_discover_extendedinfo(name, rsp_dest, rsp_dict, exp_code, exp_mod
     assert context.client.connected == True
 
     # Once the server is started, we can use it to create the discovery helper
-    dataset = await XcomDataset.create(VOLTAGE.AC240)
+    dataset = await XcomDataset.create(XcomVoltage.AC240)
     discover = XcomDiscover(api=context.server, dataset=dataset)
 
     # Start 2 parallel tasks, for server and for client
@@ -268,7 +268,7 @@ async def test_clientinfo(name, rsp_dest, rsp_dict, request):
     assert context.client.connected == True
 
     # Once the server is started, we can use it to create the discovery helper
-    dataset = await XcomDataset.create(VOLTAGE.AC240)
+    dataset = await XcomDataset.create(XcomVoltage.AC240)
     discover = XcomDiscover(api=context.server, dataset=dataset)
 
     # Start task for discover

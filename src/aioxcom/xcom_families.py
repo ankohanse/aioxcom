@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .xcom_const import (
-    SCOM_AGGREGATION_TYPE,
+    XcomAggregationType,
     XcomParamException,
 ) 
 
@@ -181,7 +181,7 @@ class XcomDeviceFamilies:
                 
                 if f.addrDevicesStart != f.addrDevicesEnd:
                     code = f.id.upper()
-                    XcomDeviceFamilies._code_to_aggr_map[code] = SCOM_AGGREGATION_TYPE.MASTER # XT -> master, VT -> master, VS -> master
+                    XcomDeviceFamilies._code_to_aggr_map[code] = XcomAggregationType.MASTER # XT -> master, VT -> master, VS -> master
 
 
     @staticmethod
@@ -211,62 +211,62 @@ class XcomDeviceFamilies:
 
 
     @staticmethod
-    def getAggregationTypeByCode(code: str) -> SCOM_AGGREGATION_TYPE:
+    def getAggregationTypeByCode(code: str) -> XcomAggregationType:
         """
         Lookup the code to find the aggregation_type
         """
         XcomDeviceFamilies._buildStaticMaps()
         aggr = XcomDeviceFamilies._code_to_aggr_map.get(code, None)
         if aggr is not None:
-            return SCOM_AGGREGATION_TYPE(aggr)
+            return XcomAggregationType(aggr)
     
         raise XcomDeviceCodeUnknownException(code)
 
 
     @staticmethod
-    def getAggregationTypeByAddr(addr: int) -> SCOM_AGGREGATION_TYPE:
+    def getAggregationTypeByAddr(addr: int) -> XcomAggregationType:
         """
         Lookup the device address to find the aggregation_type
-        Note that addr 601 can either be BMS or BSP. However, both result in SCOM_AGGREGATION_TYPE=1 so we don't care...
+        Note that addr 601 can either be BMS or BSP. However, both result in XcomAggregationType=1 so we don't care...
         """
         XcomDeviceFamilies._buildStaticMaps()
         aggr = XcomDeviceFamilies._addr_to_aggr_map.get(addr, None)
         if aggr is not None:
-            return SCOM_AGGREGATION_TYPE(aggr)
+            return XcomAggregationType(aggr)
     
         raise XcomDeviceAddrUnknownException(str)
     
     @staticmethod
-    def getAddrByAggregationType(aggr: SCOM_AGGREGATION_TYPE, family: XcomDeviceFamily):
+    def getAddrByAggregationType(aggr: XcomAggregationType, family: XcomDeviceFamily):
         XcomDeviceFamilies._buildStaticMaps()
         return next( (addr for addr in range(family.addrDevicesStart, family.addrDevicesEnd+1) if XcomDeviceFamilies._addr_to_aggr_map.get(addr, None) == aggr), None)
 
     @staticmethod
-    def getAggregationTypeByAny(val: Any) -> SCOM_AGGREGATION_TYPE:
+    def getAggregationTypeByAny(val: Any) -> XcomAggregationType:
         """
-        Convert a value into an aggregate_type value
+        Convert a value into an aggregation_type value
         Input can be:
-          - SCOM_AGGREGATION_TYPE enumeration value
+          - XcomAggregationType enumeration value
           - integer within SCOM_SCOM_AGGREGATION_TYPE range
           - Device code (like XT1, BMS, VT15) 
           - Device address (like 101, 501, 715)
         """
 
         if val is None:
-            return SCOM_AGGREGATION_TYPE.MASTER
+            return XcomAggregationType.MASTER
 
         elif isinstance(val, str):
             try:
-                # Assume val is a string representing an aggregate_type
-                return SCOM_AGGREGATION_TYPE.from_str(val, None)
+                # Assume val is a string representing an aggregation_type
+                return XcomAggregationType.from_str(val, None)
             except:
                 # Assume val is a device code
                 return XcomDeviceFamilies.getAggregationTypeByCode(val)
 
         elif isinstance(val, int):
-            if val in SCOM_AGGREGATION_TYPE:
-                # Assume val is an integer representing an aggregate_type
-                return SCOM_AGGREGATION_TYPE(val)
+            if val in XcomAggregationType:
+                # Assume val is an integer representing an aggregation_type
+                return XcomAggregationType(val)
             else:
                 # Assume val is a device address
                 return XcomDeviceFamilies.getAggregationTypeByAddr(val)

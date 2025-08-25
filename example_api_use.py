@@ -2,9 +2,8 @@ import asyncio
 import logging
 import sys
 
-from aioxcom import XcomApiTcp, XcomDataset, XcomDatapoint, XcomDataMultiInfoReq, XcomDataMultiInfoReqItem
-from aioxcom import VOLTAGE, SCOM_AGGREGATION_TYPE
-from aioxcom.xcom_protocol import XcomData
+from aioxcom import XcomApiTcp, XcomDataset, XcomDatapoint, XcomData, XcomDataMultiInfoReq, XcomDataMultiInfoReqItem
+from aioxcom import XcomVoltage, XcomAggregationType
 
 # Setup logging to StdOut
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -12,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 async def main():
-    dataset = await XcomDataset.create(VOLTAGE.AC240) # or use VOLTAGE.AC120
+    dataset = await XcomDataset.create(XcomVoltage.AC240) # or use XcomVoltage.AC120
     info_3021 = dataset.getByNr(3021, "xt")  # the "xt" part is optional but usefull for detecting mistakes
     info_3022 = dataset.getByNr(3022, "xt")
     info_3023 = dataset.getByNr(3023, "xt")
@@ -41,7 +40,7 @@ async def main():
         # Retrieve multiple params in one call. Note this will fail for some older Xcom-232i firmware versions
         try:
             req = XcomDataMultiInfoReq([
-                XcomDataMultiInfoReqItem(info_3021, SCOM_AGGREGATION_TYPE.SUM),    # pass an SCOM_AGGREGATION_TYPE constant
+                XcomDataMultiInfoReqItem(info_3021, XcomAggregationType.SUM),      # pass an XcomAggregationType constant
                 XcomDataMultiInfoReqItem(info_3022, "XT1"),                        # alternatively pass a device code
                 XcomDataMultiInfoReqItem(info_3023, 101),                          # alternatively pass a device address
             ])

@@ -16,11 +16,11 @@ from io import BufferedWriter, BufferedReader, BytesIO
 from typing import Any, Iterable
 
 from .xcom_const import (
-    FORMAT,
+    XcomFormat,
     MULTI_INFO_REQ_MAX,
-    OBJ_TYPE,
-    SCOM_AGGREGATION_TYPE,
-    SCOM_ERROR_CODES,
+    ScomObjType,
+    XcomAggregationType,
+    ScomErrorCode,
     XcomParamException,
 )
 from .xcom_datapoints import (
@@ -40,15 +40,15 @@ class XcomData:
     @staticmethod
     def unpack(value: bytes, format):
         match format:
-            case FORMAT.BOOL: return struct.unpack("<?", value)[0]          # 1 byte, little endian, bool
-            case FORMAT.ERROR: return struct.unpack("<H", value)[0]         # 2 bytes, little endian, unsigned short/int16
-            case FORMAT.FORMAT: return struct.unpack("<H", value)[0]        # 2 bytes, little endian, unsigned short/int16
-            case FORMAT.SHORT_ENUM: return struct.unpack("<H", value)[0]    # 2 bytes, little endian, unsigned short/int16
-            case FORMAT.FLOAT: return struct.unpack("<f", value)[0]         # 4 bytes, little endian, float
-            case FORMAT.INT32: return struct.unpack("<i", value)[0]         # 4 bytes, little endian, signed long/int32
-            case FORMAT.LONG_ENUM: return struct.unpack("<I", value)[0]     # 4 bytes, little endian, unsigned long/int32
-            case FORMAT.GUID: return value.hex(sep=':')                     # 16 bytes
-            case FORMAT.STRING: return value.decode('iso-8859-15')          # n bytes, ISO_8859-15 string of 8 bit characters
+            case XcomFormat.BOOL: return struct.unpack("<?", value)[0]          # 1 byte, little endian, bool
+            case XcomFormat.ERROR: return struct.unpack("<H", value)[0]         # 2 bytes, little endian, unsigned short/int16
+            case XcomFormat.FORMAT: return struct.unpack("<H", value)[0]        # 2 bytes, little endian, unsigned short/int16
+            case XcomFormat.SHORT_ENUM: return struct.unpack("<H", value)[0]    # 2 bytes, little endian, unsigned short/int16
+            case XcomFormat.FLOAT: return struct.unpack("<f", value)[0]         # 4 bytes, little endian, float
+            case XcomFormat.INT32: return struct.unpack("<i", value)[0]         # 4 bytes, little endian, signed long/int32
+            case XcomFormat.LONG_ENUM: return struct.unpack("<I", value)[0]     # 4 bytes, little endian, unsigned long/int32
+            case XcomFormat.GUID: return value.hex(sep=':')                     # 16 bytes
+            case XcomFormat.STRING: return value.decode('iso-8859-15')          # n bytes, ISO_8859-15 string of 8 bit characters
             case _: 
                 msg = "Unknown data format '{format}"
                 raise TypeError(msg)
@@ -56,14 +56,14 @@ class XcomData:
     @staticmethod
     def pack(value, format) -> bytes:
         match format:
-            case FORMAT.BOOL: return struct.pack("<?", int(value))         # 1 byte, little endian, bool
-            case FORMAT.ERROR: return struct.pack("<H", int(value))        # 2 bytes, little endian, unsigned short/int16
-            case FORMAT.SHORT_ENUM: return struct.pack("<H", int(value))   # 2 bytes, little endian, unsigned short/int16
-            case FORMAT.FLOAT: return struct.pack("<f", float(value))      # 4 bytes, little endian, float
-            case FORMAT.INT32: return struct.pack("<i", int(value))        # 4 bytes, little endian, signed long/int32
-            case FORMAT.LONG_ENUM: return struct.pack("<I", int(value))    # 4 bytes, little endian, unsigned long/int32
-            case FORMAT.GUID: return bytes.fromhex(value.replace(':',''))  # 16 bytes
-            case FORMAT.STRING: return value.encode('iso-8859-15')         # n bytes, ISO_8859-15 string of 8 bit characters
+            case XcomFormat.BOOL: return struct.pack("<?", int(value))         # 1 byte, little endian, bool
+            case XcomFormat.ERROR: return struct.pack("<H", int(value))        # 2 bytes, little endian, unsigned short/int16
+            case XcomFormat.SHORT_ENUM: return struct.pack("<H", int(value))   # 2 bytes, little endian, unsigned short/int16
+            case XcomFormat.FLOAT: return struct.pack("<f", float(value))      # 4 bytes, little endian, float
+            case XcomFormat.INT32: return struct.pack("<i", int(value))        # 4 bytes, little endian, signed long/int32
+            case XcomFormat.LONG_ENUM: return struct.pack("<I", int(value))    # 4 bytes, little endian, unsigned long/int32
+            case XcomFormat.GUID: return bytes.fromhex(value.replace(':',''))  # 16 bytes
+            case XcomFormat.STRING: return value.encode('iso-8859-15')         # n bytes, ISO_8859-15 string of 8 bit characters
             case _: 
                 msg = "Unknown data format '{format}"
                 raise TypeError(msg)
@@ -71,14 +71,14 @@ class XcomData:
     @staticmethod
     def cast(value: float, format):
         match format:
-            case FORMAT.BOOL: return bool(value)
-            case FORMAT.ERROR: return int(value)
-            case FORMAT.FORMAT: return int(value)
-            case FORMAT.SHORT_ENUM: return int(value)
-            case FORMAT.FLOAT: return value
-            case FORMAT.INT32: return int(value)
-            case FORMAT.LONG_ENUM: return int(value)
-            case FORMAT.STRING: return value.decode('iso-8859-15') 
+            case XcomFormat.BOOL: return bool(value)
+            case XcomFormat.ERROR: return int(value)
+            case XcomFormat.FORMAT: return int(value)
+            case XcomFormat.SHORT_ENUM: return int(value)
+            case XcomFormat.FLOAT: return value
+            case XcomFormat.INT32: return int(value)
+            case XcomFormat.LONG_ENUM: return int(value)
+            case XcomFormat.STRING: return value.decode('iso-8859-15') 
             case _: 
                 msg = f"Unknown data format '{format}"
                 raise TypeError(msg)
@@ -86,11 +86,11 @@ class XcomData:
 
 class XcomDataMultiInfoReqItem():
     datapoint: XcomDatapoint
-    aggregation_type: SCOM_AGGREGATION_TYPE
+    aggregation_type: XcomAggregationType
 
     def __init__(self, datapoint: XcomDatapoint, aggregation_type: Any):
 
-        if datapoint.obj_type != OBJ_TYPE.INFO:
+        if datapoint.obj_type != ScomObjType.INFO:
                 raise XcomParamException(f"Invalid datapoint passed to requestValues; must have obj_type INFO. Violated by datapoint '{datapoint.name}' ({datapoint.nr})")
 
         self.datapoint = datapoint
@@ -127,10 +127,10 @@ class XcomDataMultiInfoReq:
 
 class XcomDataMultiInfoRspItem():
     datapoint: XcomDatapoint
-    aggregation_type: SCOM_AGGREGATION_TYPE
+    aggregation_type: XcomAggregationType
     value: Any
 
-    def __init__(self, datapoint: XcomDatapoint, aggregation_type: SCOM_AGGREGATION_TYPE, value: Any):
+    def __init__(self, datapoint: XcomDatapoint, aggregation_type: XcomAggregationType, value: Any):
         self.datapoint = datapoint
         self.aggregation_type = aggregation_type
         self.value = value
@@ -180,8 +180,8 @@ class XcomDataMultiInfoRsp:
             f_len -= 7
 
             datapoint = next((item.datapoint for item in req_data.items if item.datapoint.nr==user_info_ref), None)
-            aggregation_type = SCOM_AGGREGATION_TYPE(aggr)
-            value = XcomData.unpack(data, FORMAT.FLOAT)
+            aggregation_type = XcomAggregationType(aggr)
+            value = XcomData.unpack(data, XcomFormat.FLOAT)
             val = XcomData.cast(value, datapoint.format)
 
             items.append(XcomDataMultiInfoRspItem(
@@ -197,7 +197,7 @@ class XcomDataMultiInfoRsp:
         writeUInt32(f, self.flags)
         writeUInt32(f, self.datetime)
         for item in self.items:
-            data = XcomData.pack(item.value, FORMAT.FLOAT)
+            data = XcomData.pack(item.value, XcomFormat.FLOAT)
             writeUInt16(f, item.datapoint.nr)
             writeUInt8(f, item.aggregation_type)
             writeBytes(f, data)
@@ -470,8 +470,8 @@ class XcomPackage:
 
     def getError(self) -> str:
         if self.isError():
-            error = XcomData.unpack(self.frame_data.service_data.property_data, FORMAT.ERROR)
-            return SCOM_ERROR_CODES.getByError(error)
+            error = XcomData.unpack(self.frame_data.service_data.property_data, XcomFormat.ERROR)
+            return ScomErrorCode.getByError(error)
         return None
  
     def __str__(self) -> str:

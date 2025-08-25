@@ -11,10 +11,10 @@ import orjson
 from dataclasses import dataclass
 
 from .xcom_const import (
-    LEVEL,
-    FORMAT,
-    OBJ_TYPE,
-    VOLTAGE,
+    XcomLevel,
+    XcomFormat,
+    ScomObjType,
+    XcomVoltage,
 )
 
 
@@ -28,13 +28,13 @@ class XcomDatapointUnknownException(Exception):
 @dataclass
 class XcomDatapoint:
     family_id: str
-    level: LEVEL
+    level: XcomLevel
     parent: int | None
     nr: int
     name: str
     abbr: str   # abbreviated/coded name
     unit: str
-    format: FORMAT
+    format: XcomFormat
     default: float|str = None
     min: float|str = None
     max: float|str = None
@@ -68,13 +68,13 @@ class XcomDatapoint:
             return None
         
         family_id = str(fam)
-        level = LEVEL.from_str(str(lvl))
+        level = XcomLevel.from_str(str(lvl))
         parent = int(pnr)
         number = int(nr)
         name = str(name).strip()
         abbr = str(short)
         unit = unit if type(unit) is str else None
-        format = FORMAT.from_str(str(fmt))
+        format = XcomFormat.from_str(str(fmt))
         default = float(dft) if (type(dft) is int or type(dft) is float) else "S" if (dft=="S") else None
         minimum = float(min) if (type(min) is int or type(min) is float) else "S" if (dft=="S") else None
         maximum = float(max) if (type(max) is int or type(max) is float) else "S" if (dft=="S") else None
@@ -85,17 +85,17 @@ class XcomDatapoint:
         
     @property
     def obj_type(self):
-        if self.level in [LEVEL.INFO]:
-            return OBJ_TYPE.INFO
+        if self.level in [XcomLevel.INFO]:
+            return ScomObjType.INFO
 
-        if self.level in [LEVEL.VO, LEVEL.BASIC, LEVEL.EXPERT, LEVEL.INST, LEVEL.QSP]:
-            return OBJ_TYPE.PARAMETER
+        if self.level in [XcomLevel.VO, XcomLevel.BASIC, XcomLevel.EXPERT, XcomLevel.INST, XcomLevel.QSP]:
+            return ScomObjType.PARAMETER
             
         _LOGGER.debug(f"Unknown obj_type for datapoint {self.nr} with level {self.level} and format {self.format}")
-        return OBJ_TYPE.INFO
+        return ScomObjType.INFO
     
     def enum_value(self, key):
-        if self.format not in [FORMAT.LONG_ENUM, FORMAT.SHORT_ENUM]:
+        if self.format not in [XcomFormat.LONG_ENUM, XcomFormat.SHORT_ENUM]:
             return None
         
         key = str(key)
@@ -105,7 +105,7 @@ class XcomDatapoint:
             return self.options[key]
     
     def enum_key(self, value):
-        if self.format not in [FORMAT.LONG_ENUM, FORMAT.SHORT_ENUM]:
+        if self.format not in [XcomFormat.LONG_ENUM, XcomFormat.SHORT_ENUM]:
             return None
         
         if not isinstance(self.options, dict) or value not in self.options.values():
@@ -145,7 +145,7 @@ class XcomDataset:
         # start with the 240v list as base
         datapoints = datapoints_240vac
 
-        if voltage == VOLTAGE.AC120:
+        if voltage == XcomVoltage.AC120:
             # Merge the 120v list into the 240v one by replacing duplicates. This maintains the order of menu items
             for dp120 in datapoints_120vac:
                 # already in result?
@@ -155,7 +155,7 @@ class XcomDataset:
 
             _LOGGER.info(f"Using {len(datapoints)} datapoints for 120 Vac")
 
-        elif voltage == VOLTAGE.AC240:
+        elif voltage == XcomVoltage.AC240:
             _LOGGER.info(f"Using {len(datapoints)} datapoints for 240 Vac")
 
         else:

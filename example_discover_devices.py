@@ -3,7 +3,7 @@ from dataclasses import asdict
 import logging
 import sys
 
-from aioxcom import XcomApiTcp, XcomDataset, XcomDiscover, VOLTAGE
+from aioxcom import XcomApiTcp, XcomDataset, XcomDiscover, XcomVoltage
 
 # Setup logging to StdOut
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 async def main():
     # Discover all Xcom devices
     api     = XcomApiTcp(4001)    # port number configured in Xcom-LAN/Moxa NPort
-    dataset = await XcomDataset.create(VOLTAGE.AC240) # or use VOLTAGE.AC120
+    dataset = await XcomDataset.create(XcomVoltage.AC240) # or use XcomVoltage.AC120
 
     try:
         if not await api.start():

@@ -2,7 +2,7 @@
 import pytest
 from aioxcom import XcomDeviceFamilies
 from aioxcom import XcomDeviceFamilyUnknownException, XcomDeviceCodeUnknownException, XcomDeviceAddrUnknownException, XcomParamException
-from aioxcom import SCOM_AGGREGATION_TYPE
+from aioxcom import XcomAggregationType
 
 
 def test_list():
@@ -65,43 +65,43 @@ def test_addr_fail():
 @pytest.mark.parametrize(
     "val, exp_aggr, exp_except",
     [
-        (SCOM_AGGREGATION_TYPE.MASTER,   SCOM_AGGREGATION_TYPE.MASTER,   None),
-        (SCOM_AGGREGATION_TYPE.DEVICE1,  SCOM_AGGREGATION_TYPE.DEVICE1,  None),
-        (SCOM_AGGREGATION_TYPE.AVERAGE,  SCOM_AGGREGATION_TYPE.AVERAGE,  None),
-        (SCOM_AGGREGATION_TYPE.SUM,      SCOM_AGGREGATION_TYPE.SUM,      None),
-        (0,      SCOM_AGGREGATION_TYPE.MASTER,   None),
-        (1,      SCOM_AGGREGATION_TYPE.DEVICE1,  None),
-        (15,     SCOM_AGGREGATION_TYPE.DEVICE15, None),
-        (0xfd,   SCOM_AGGREGATION_TYPE.AVERAGE,  None),
-        (0xfe,   SCOM_AGGREGATION_TYPE.SUM,      None),
+        (XcomAggregationType.MASTER,   XcomAggregationType.MASTER,   None),
+        (XcomAggregationType.DEVICE1,  XcomAggregationType.DEVICE1,  None),
+        (XcomAggregationType.AVERAGE,  XcomAggregationType.AVERAGE,  None),
+        (XcomAggregationType.SUM,      XcomAggregationType.SUM,      None),
+        (0,      XcomAggregationType.MASTER,   None),
+        (1,      XcomAggregationType.DEVICE1,  None),
+        (15,     XcomAggregationType.DEVICE15, None),
+        (0xfd,   XcomAggregationType.AVERAGE,  None),
+        (0xfe,   XcomAggregationType.SUM,      None),
         (16,     None,                           XcomDeviceAddrUnknownException),
         (0xfc,   None,                           XcomDeviceAddrUnknownException),
         (0xff,   None,                           XcomDeviceAddrUnknownException),
-        ("XT",   SCOM_AGGREGATION_TYPE.MASTER,   None),
-        ("XT1",  SCOM_AGGREGATION_TYPE.DEVICE1,  None),
-        ("XT9",  SCOM_AGGREGATION_TYPE.DEVICE9,  None),
-        ("L3",   SCOM_AGGREGATION_TYPE.DEVICE1,  None),
-        ("RCC",  SCOM_AGGREGATION_TYPE.DEVICE1,  None),
-        ("BSP",  SCOM_AGGREGATION_TYPE.DEVICE1,  None),
-        ("BMS",  SCOM_AGGREGATION_TYPE.DEVICE1,  None),
-        ("VT",   SCOM_AGGREGATION_TYPE.MASTER,   None),
-        ("VT1",  SCOM_AGGREGATION_TYPE.DEVICE1,  None),
-        ("VT15", SCOM_AGGREGATION_TYPE.DEVICE15, None),
-        ("VS",   SCOM_AGGREGATION_TYPE.MASTER,   None),
-        ("VS1",  SCOM_AGGREGATION_TYPE.DEVICE1,  None),
-        ("VS15", SCOM_AGGREGATION_TYPE.DEVICE15, None),
+        ("XT",   XcomAggregationType.MASTER,   None),
+        ("XT1",  XcomAggregationType.DEVICE1,  None),
+        ("XT9",  XcomAggregationType.DEVICE9,  None),
+        ("L3",   XcomAggregationType.DEVICE1,  None),
+        ("RCC",  XcomAggregationType.DEVICE1,  None),
+        ("BSP",  XcomAggregationType.DEVICE1,  None),
+        ("BMS",  XcomAggregationType.DEVICE1,  None),
+        ("VT",   XcomAggregationType.MASTER,   None),
+        ("VT1",  XcomAggregationType.DEVICE1,  None),
+        ("VT15", XcomAggregationType.DEVICE15, None),
+        ("VS",   XcomAggregationType.MASTER,   None),
+        ("VS1",  XcomAggregationType.DEVICE1,  None),
+        ("VS15", XcomAggregationType.DEVICE15, None),
         ("ABC",  None,                           XcomDeviceCodeUnknownException),
         ("abc",  None,                           XcomDeviceCodeUnknownException),
         ("xt",   None,                           XcomDeviceCodeUnknownException),
-        (101,    SCOM_AGGREGATION_TYPE.DEVICE1,  None), # XT1
-        (109,    SCOM_AGGREGATION_TYPE.DEVICE9,  None), # XT9
-        (193,    SCOM_AGGREGATION_TYPE.DEVICE1,  None), # L3
-        (501,    SCOM_AGGREGATION_TYPE.DEVICE1,  None), # RCC
-        (601,    SCOM_AGGREGATION_TYPE.DEVICE1,  None), # either BSP or BMS
-        (301,    SCOM_AGGREGATION_TYPE.DEVICE1,  None), # VS1
-        (315,    SCOM_AGGREGATION_TYPE.DEVICE15, None), # VS15
-        (701,    SCOM_AGGREGATION_TYPE.DEVICE1,  None), # VT1
-        (715,    SCOM_AGGREGATION_TYPE.DEVICE15, None), # VT15
+        (101,    XcomAggregationType.DEVICE1,  None), # XT1
+        (109,    XcomAggregationType.DEVICE9,  None), # XT9
+        (193,    XcomAggregationType.DEVICE1,  None), # L3
+        (501,    XcomAggregationType.DEVICE1,  None), # RCC
+        (601,    XcomAggregationType.DEVICE1,  None), # either BSP or BMS
+        (301,    XcomAggregationType.DEVICE1,  None), # VS1
+        (315,    XcomAggregationType.DEVICE15, None), # VS15
+        (701,    XcomAggregationType.DEVICE1,  None), # VT1
+        (715,    XcomAggregationType.DEVICE15, None), # VT15
         (110,    None,                           XcomDeviceAddrUnknownException),
         (190,    None,                           XcomDeviceAddrUnknownException),
         (300,    None,                           XcomDeviceAddrUnknownException),

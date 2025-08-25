@@ -14,15 +14,15 @@ class XcomParamException(Exception):
 
 MULTI_INFO_REQ_MAX = 76
 
-class VOLTAGE(StrEnum):
+class XcomVoltage(StrEnum):
     AC120 = "120 Vac"
     AC240 = "240 Vac"
 
     @staticmethod
     def from_str(s: str, default: str|None = None):
         match s.upper():
-            case '120 VAC' | '120_VAC': return VOLTAGE.AC120
-            case '240 VAC' | '240_VAC': return VOLTAGE.AC240
+            case '120 VAC' | '120_VAC': return XcomVoltage.AC120
+            case '240 VAC' | '240_VAC': return XcomVoltage.AC240
             case _: 
                 if default is not None:
                     return default
@@ -30,9 +30,8 @@ class VOLTAGE(StrEnum):
                     msg = f"Unknown voltage: '{s}'"
                     raise Exception(msg)
 
-
 ### data types
-class LEVEL(IntEnum):
+class XcomLevel(IntEnum):
     INFO   = 0x0001
     VO     = 0x0000 # View Only. Used for param RCC 5012 (User Level)
     BASIC  = 0x0010
@@ -43,12 +42,12 @@ class LEVEL(IntEnum):
     @staticmethod
     def from_str(s: str, default: int|None = None):
         match s.upper():
-            case 'INFO': return LEVEL.INFO
-            case 'VO' | 'V.O.': return LEVEL.VO
-            case 'BASIC': return LEVEL.BASIC
-            case 'EXPERT': return LEVEL.EXPERT
-            case 'INST' | 'INST.': return LEVEL.INST
-            case 'QSP': return LEVEL.QSP
+            case 'INFO': return XcomLevel.INFO
+            case 'VO' | 'V.O.': return XcomLevel.VO
+            case 'BASIC': return XcomLevel.BASIC
+            case 'EXPERT': return XcomLevel.EXPERT
+            case 'INST' | 'INST.': return XcomLevel.INST
+            case 'QSP': return XcomLevel.QSP
             case _: 
                 if default is not None:
                     return default
@@ -62,7 +61,7 @@ class LEVEL(IntEnum):
     def __repr__(self):
         return self.name
 
-class FORMAT(StrEnum):
+class XcomFormat(StrEnum):
     BOOL       = "BOOL"         # 1 byte
     FORMAT     = "FORMAT"       # 2 bytes
     SHORT_ENUM = "SHORT ENUM"   # 2 bytes
@@ -80,19 +79,19 @@ class FORMAT(StrEnum):
     @staticmethod
     def from_str(s: str, default: str|None = None):
         match s.upper():
-            case 'BOOL': return FORMAT.BOOL
-            case 'FORMAT': return FORMAT.FORMAT
-            case 'SHORT_ENUM' | 'SHORT ENUM': return FORMAT.SHORT_ENUM
-            case 'ERROR': return FORMAT.ERROR
-            case 'INT32': return FORMAT.INT32
-            case 'FLOAT': return FORMAT.FLOAT
-            case 'LONG_ENUM' | 'LONG ENUM': return FORMAT.LONG_ENUM
-            case 'GUID': return FORMAT.GUID
-            case 'STRING': return FORMAT.STRING
-            case 'DYNAMIC': return FORMAT.DYNAMIC
-            case 'BYTES': return FORMAT.BYTES
-            case 'MENU' | 'ONLY_LEVEL' | 'ONLY LEVEL': return FORMAT.MENU
-            case 'NOT SUPPORTED': return FORMAT.INVALID
+            case 'BOOL': return XcomFormat.BOOL
+            case 'FORMAT': return XcomFormat.FORMAT
+            case 'SHORT_ENUM' | 'SHORT ENUM': return XcomFormat.SHORT_ENUM
+            case 'ERROR': return XcomFormat.ERROR
+            case 'INT32': return XcomFormat.INT32
+            case 'FLOAT': return XcomFormat.FLOAT
+            case 'LONG_ENUM' | 'LONG ENUM': return XcomFormat.LONG_ENUM
+            case 'GUID': return XcomFormat.GUID
+            case 'STRING': return XcomFormat.STRING
+            case 'DYNAMIC': return XcomFormat.DYNAMIC
+            case 'BYTES': return XcomFormat.BYTES
+            case 'MENU' | 'ONLY_LEVEL' | 'ONLY LEVEL': return XcomFormat.MENU
+            case 'NOT SUPPORTED': return XcomFormat.INVALID
             case _: 
                 if default is not None:
                     return default
@@ -106,93 +105,8 @@ class FORMAT(StrEnum):
     def __repr__(self):
         return self.name
 
-### object_type
-class OBJ_TYPE(StrEnum):
-    INFO       = "INFO"
-    PARAMETER  = "PARAMETER"
-    MESSAGE    = "MESSAGE"
-    GUID       = "GUID"
-    DATALOG    = "DATALOG"
-    MULTI_INFO = "MULTI-INFO"
-
-    def __str__(self):
-        return self.name
-    
-    def __repr__(self):
-        return self.name
-
-    @staticmethod
-    def fromScomObjType(obj_type):
-        match obj_type:
-            case SCOM_OBJ_TYPE.INFO: return OBJ_TYPE.INFO
-            case SCOM_OBJ_TYPE.PARAMETER: return OBJ_TYPE.PARAMETER
-            case SCOM_OBJ_TYPE.MESSAGE: return OBJ_TYPE.MESSAGE
-            case SCOM_OBJ_TYPE.GUID: return OBJ_TYPE.GUID
-            case SCOM_OBJ_TYPE.DATALOG: return OBJ_TYPE.DATALOG
-            case SCOM_OBJ_TYPE.MULTI_INFO: return OBJ_TYPE.MULTI_INFO
-            case _: 
-                msg = f"Unknown obj_type: '{obj_type}'"
-                raise Exception(msg)
-
-### object_type in Scom/Xcom
-class SCOM_OBJ_TYPE:
-    INFO       = 0x0001
-    PARAMETER  = 0x0002
-    MESSAGE    = 0x0003
-    GUID       = 0x0004
-    DATALOG    = 0x0005
-    MULTI_INFO = 0x000A
-
-    def __str__(self):
-        return self.name
-    
-    def __repr__(self):
-        return self.name
-
-    @staticmethod
-    def fromObjType(obj_type):
-        match obj_type:
-            case OBJ_TYPE.INFO: return SCOM_OBJ_TYPE.INFO
-            case OBJ_TYPE.PARAMETER: return SCOM_OBJ_TYPE.PARAMETER
-            case OBJ_TYPE.MESSAGE: return SCOM_OBJ_TYPE.MESSAGE
-            case OBJ_TYPE.GUID: return SCOM_OBJ_TYPE.GUID
-            case OBJ_TYPE.DATALOG: return SCOM_OBJ_TYPE.DATALOG
-            case OBJ_TYPE.MULTI_INFO: return SCOM_OBJ_TYPE.MULTI_INFO
-            case _: 
-                msg = f"Unknown obj_type: '{obj_type}'"
-                raise Exception(msg)
-
-### object_id
-class SCOM_OBJ_ID:
-    NONE        = 0x00000000
-    MULTI_INFO  = 0x00000001
-
-
-### service_flags
-class SCOM_SERVICE:
-    READ   = 0x01
-    WRITE  = 0x02
-
-### property_id
-class SCOM_QSP_ID:
-    NONE            = 0x0000
-    MULTI_INFO      = 0x0001
-    VALUE           = 0x0005
-    MIN             = 0x0006
-    MAX             = 0x0007
-    LEVEL           = 0x0008
-    UNSAVED_VALUE   = 0x000D
-
-## values for QSP_LEVEL
-class SCOM_QSP_LEVEL:
-    VIEW_ONLY       = 0x0000
-    BASIC           = 0x0010
-    EXPERT          = 0x0020
-    INSTALLER       = 0x0030
-    QSP             = 0x0040
-
 ## values for aggregation_type
-class SCOM_AGGREGATION_TYPE(IntEnum):
+class XcomAggregationType(IntEnum):
     MASTER          = 0x00
     DEVICE1         = 0x01
     DEVICE2         = 0x02
@@ -214,14 +128,14 @@ class SCOM_AGGREGATION_TYPE(IntEnum):
 
     @staticmethod
     def from_str(s: str, default: int|None = None):
-        for e in SCOM_AGGREGATION_TYPE:
+        for e in XcomAggregationType:
             if str(e) == s.upper():
                 return e
             
         if default is not None:
             return default
         else:
-            msg = f"Unknown SCOM_AGGREGATION_TYPE: '{s}'"
+            msg = f"Unknown aggregation_type: '{s}'"
             raise Exception(msg)
 
     def __str__(self):
@@ -230,12 +144,69 @@ class SCOM_AGGREGATION_TYPE(IntEnum):
     def __repr__(self):
         return self.name
 
+### object_type (internal)
+class ScomObjType:
+    INFO       = 0x0001
+    PARAMETER  = 0x0002
+    MESSAGE    = 0x0003
+    GUID       = 0x0004
+    DATALOG    = 0x0005
+    MULTI_INFO = 0x000A
 
-# SCOM_ADDRESSES
-SCOM_ADDR_BROADCAST = 0
+    def __str__(self):
+        return self.name
+    
+    def __repr__(self):
+        return self.name
 
-### error codes
-class SCOM_ERROR_CODES:
+    @staticmethod
+    @staticmethod
+    def from_str(s: str, default: int|None = None):
+        for e in XcomAggregationType:
+            if str(e) == s.upper():
+                return e
+            
+        if default is not None:
+            return default
+        else:
+            msg = f"Unknown obj_type: '{s}'"
+            raise Exception(msg)
+
+### object_id (internal)
+class ScomObjId:
+    NONE        = 0x00000000
+    MULTI_INFO  = 0x00000001
+
+
+### service_flags (internal)
+class ScomService:
+    READ   = 0x01
+    WRITE  = 0x02
+
+### property_id (internal)
+class ScomQspId:
+    NONE            = 0x0000
+    MULTI_INFO      = 0x0001
+    VALUE           = 0x0005
+    MIN             = 0x0006
+    MAX             = 0x0007
+    LEVEL           = 0x0008
+    UNSAVED_VALUE   = 0x000D
+
+## values for QSP_LEVEL (internal)
+class ScomQspLevel:
+    VIEW_ONLY       = 0x0000
+    BASIC           = 0x0010
+    EXPERT          = 0x0020
+    INSTALLER       = 0x0030
+    QSP             = 0x0040
+
+### addresses (internal)
+class ScomAddress:
+    BROADCAST = 0
+
+### error codes (internal)
+class ScomErrorCode:
     NO_ERROR                                = 0x0000 
     INVALID_FRAME                           = 0x0001
     DEVICE_NOT_FOUND                        = 0x0002
@@ -269,7 +240,7 @@ class SCOM_ERROR_CODES:
 
     @staticmethod
     def getByError(error: int):
-        for key,val in SCOM_ERROR_CODES.__dict__.items():
+        for key,val in ScomErrorCode.__dict__.items():
             if type(key) is str and type(val) is int and val==error:
                 return key
 

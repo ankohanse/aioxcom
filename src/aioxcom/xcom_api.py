@@ -9,15 +9,15 @@ from datetime import datetime, timedelta
 from typing import Iterable
 
 from .xcom_const import (
-    FORMAT,
-    LEVEL,
-    OBJ_TYPE,
-    SCOM_AGGREGATION_TYPE,
-    SCOM_OBJ_ID,
-    SCOM_OBJ_TYPE,
-    SCOM_SERVICE,
-    SCOM_QSP_ID,
-    SCOM_ERROR_CODES,
+    XcomLevel,
+    XcomFormat,
+    ScomObjType,
+    XcomAggregationType,
+    ScomObjType,
+    ScomObjId,
+    ScomService,
+    ScomQspId,
+    ScomErrorCode,
     MULTI_INFO_REQ_MAX,
 )
 from .xcom_protocol import (
@@ -140,10 +140,10 @@ class XcomApiBase:
 
         # Compose the request and send it
         request: XcomPackage = XcomPackage.genPackage(
-            service_id = SCOM_SERVICE.READ,
-            object_type = SCOM_OBJ_TYPE.GUID,
-            object_id = SCOM_OBJ_ID.NONE,
-            property_id = SCOM_QSP_ID.NONE,
+            service_id = ScomService.READ,
+            object_type = ScomObjType.GUID,
+            object_id = ScomObjId.NONE,
+            property_id = ScomQspId.NONE,
             property_data = XcomData.NONE,
             dst_addr = XcomDeviceFamilies.RCC.addrDevicesStart
         )
@@ -152,7 +152,7 @@ class XcomApiBase:
         if response is not None:
             # Unpack the response value
             try:
-                return XcomData.unpack(response.frame_data.service_data.property_data, FORMAT.GUID)
+                return XcomData.unpack(response.frame_data.service_data.property_data, XcomFormat.GUID)
 
             except Exception as e:
                 msg = f"Failed to unpack response package for GUID:{request.header.dst_addr}, data={response.frame_data.service_data.property_data.hex()}: {e}"
@@ -176,10 +176,10 @@ class XcomApiBase:
 
         # Compose the request and send it
         request: XcomPackage = XcomPackage.genPackage(
-            service_id = SCOM_SERVICE.READ,
-            object_type = SCOM_OBJ_TYPE.fromObjType(parameter.obj_type),
+            service_id = ScomService.READ,
+            object_type = parameter.obj_type,
             object_id = parameter.nr,
-            property_id = SCOM_QSP_ID.UNSAVED_VALUE if parameter.obj_type == OBJ_TYPE.PARAMETER else SCOM_QSP_ID.VALUE,
+            property_id = ScomQspId.UNSAVED_VALUE if parameter.obj_type == ScomObjType.PARAMETER else ScomQspId.VALUE,
             property_data = XcomData.NONE,
             dst_addr = dstAddr
         )
@@ -211,9 +211,9 @@ class XcomApiBase:
 
         # Compose the request and send it
         request: XcomPackage = XcomPackage.genPackage(
-            service_id = SCOM_SERVICE.READ,
-            object_type = SCOM_OBJ_TYPE.MULTI_INFO,
-            object_id = SCOM_OBJ_ID.MULTI_INFO,
+            service_id = ScomService.READ,
+            object_type = ScomObjType.MULTI_INFO,
+            object_id = ScomObjId.MULTI_INFO,
             property_id = self._getNextRequestId() & 0xffff,
             property_data = multi_info_req_data.pack(),
             dst_addr = XcomDeviceFamilies.RCC.addrDevicesStart
@@ -240,8 +240,8 @@ class XcomApiBase:
             XcomApiTimeoutException
             XcomApiResponseIsError
         """
-        # Sanity check: the parameter/datapoint must have obj_type == OBJ_TYPE.PARAMETER
-        if parameter.obj_type != OBJ_TYPE.PARAMETER:
+        # Sanity check: the parameter/datapoint must have obj_type == ScomObjType.PARAMETER
+        if parameter.obj_type != ScomObjType.PARAMETER:
             _LOGGER.warn(f"Ignoring attempt to update readonly infos value {parameter}")
             return None
 
@@ -252,10 +252,10 @@ class XcomApiBase:
 
         # Compose the request and send it
         request: XcomPackage = XcomPackage.genPackage(
-            service_id = SCOM_SERVICE.WRITE,
-            object_type = SCOM_OBJ_TYPE.PARAMETER,
+            service_id = ScomService.WRITE,
+            object_type = ScomObjType.PARAMETER,
             object_id = parameter.nr,
-            property_id = SCOM_QSP_ID.UNSAVED_VALUE,
+            property_id = ScomQspId.UNSAVED_VALUE,
             property_data = XcomData.pack(value, parameter.format),
             dst_addr = dstAddr
         )
