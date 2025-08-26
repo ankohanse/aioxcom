@@ -276,7 +276,7 @@ async def test_requestMulti(name, exp_src_addr, exp_dst_addr, exp_svc_id, exp_ob
         if rsp_data is not None:
             rsp.frame_data.service_data.property_data = rsp_data
         else:
-            rsp.frame_data.service_data.property_data = exp_rsp_data.pack()
+            rsp.frame_data.service_data.property_data = exp_rsp_data.packResponse()
 
         rsp.header.data_length = len(rsp.frame_data)
 
@@ -325,9 +325,9 @@ async def test_requestMulti(name, exp_src_addr, exp_dst_addr, exp_svc_id, exp_ob
 @pytest.mark.parametrize(
     "name, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except",
     [
-        ("request guid ok",      501, ScomService.READ, ScomObjType.GUID, ScomObjId.NONE, ScomQspId.NONE, 0x02, XcomData.pack("00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff", XcomFormat.GUID), "00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff",  None),
+        ("request guid ok",      501, ScomService.READ, ScomObjType.GUID, ScomObjId.NONE, ScomQspId.NONE, 0x02, XcomData.pack("00112233-4455-6677-8899-aabbccddeeff", XcomFormat.GUID), "00112233-4455-6677-8899-aabbccddeeff",  None),
         ("request guid err",     501, ScomService.READ, ScomObjType.GUID, ScomObjId.NONE, ScomQspId.NONE, 0x03, XcomData.pack(ScomErrorCode.READ_PROPERTY_FAILED, XcomFormat.ERROR),            None, XcomApiResponseIsError),
-        ("request guid timeout", 501, ScomService.READ, ScomObjType.GUID, ScomObjId.NONE, ScomQspId.NONE, 0x00, XcomData.pack("00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff", XcomFormat.GUID), None, XcomApiTimeoutException),
+        ("request guid timeout", 501, ScomService.READ, ScomObjType.GUID, ScomObjId.NONE, ScomQspId.NONE, 0x00, XcomData.pack("00112233-4455-6677-8899-aabbccddeeff", XcomFormat.GUID), None, XcomApiTimeoutException),
     ]
 )
 async def test_requestGuid(name, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except, request):

@@ -24,6 +24,7 @@ from .xcom_families import (
 
 _LOGGER = logging.getLogger(__name__)
 logging.getLogger("aiohttp").setLevel(logging.WARNING)
+logging.getLogger("getmac").setLevel(logging.WARNING)
 
 
 class XcomDiscoverNotConnected(Exception):
@@ -34,6 +35,7 @@ class XcomDiscoverNotConnected(Exception):
 class XcomDiscoveredClient:
     ip: str = None
     mac: str = None
+    guid: str = None
 
 
 @dataclass
@@ -193,7 +195,7 @@ class XcomDiscover:
         return bytes.hex(' ',4).upper()
 
 
-    async def discoverClientInfo(self) -> XcomDiscoveredClient:
+    async def discoverClientInfo(self, verbose=False) -> XcomDiscoveredClient:
         """
         Discover extended info about the remote Xcom client connected to us
         """
@@ -205,8 +207,10 @@ class XcomDiscover:
         if not self._api.remote_ip:
             raise XcomDiscoverNotConnected("No IP address was detected for the remote client")
 
+        _LOGGER.info(f"Trying to get client info")
         client_ip = None
         client_mac = None
+        client_guid = None
 
         try:
             ip = ipaddress.ip_address(self._api.remote_ip)
@@ -215,15 +219,25 @@ class XcomDiscover:
             match ip.version:
                 case 4: client_mac = get_mac_address(ip=client_ip)
                 case 6: client_mac = get_mac_address(ip6=client_ip)
-        except:
-            pass
+
+            _LOGGER.info(f"  Found ip: {client_ip}, mac: {client_mac}")
+
+        except Exception as e:
+            _LOGGER.warning(f"  Exception in discoverClientInfo: {e}")
+
+        try:
+            client_guid = await self._api.requestGuid(verbose=verbose)
+
+            _LOGGER.info(f"  Found guid: {client_guid}")
+
+        except Exception as e:
+            _LOGGER.warning(f"  Exception in discoverClientInfo: {e}")
 
         return XcomDiscoveredClient(
             ip = client_ip,
             mac = client_mac,
+            guid = client_guid,
         )
-
-
 
 
     @staticmethod

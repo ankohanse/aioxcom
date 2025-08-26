@@ -10,6 +10,8 @@
 
 import logging
 import struct
+import uuid
+
 from io import BufferedWriter, BufferedReader, BytesIO
 from typing import Any, Iterable
 
@@ -33,7 +35,7 @@ class XcomData:
             case XcomFormat.FLOAT: return struct.unpack("<f", value)[0]         # 4 bytes, little endian, float
             case XcomFormat.INT32: return struct.unpack("<i", value)[0]         # 4 bytes, little endian, signed long/int32
             case XcomFormat.LONG_ENUM: return struct.unpack("<I", value)[0]     # 4 bytes, little endian, unsigned long/int32
-            case XcomFormat.GUID: return value.hex(sep=':')                     # 16 bytes
+            case XcomFormat.GUID: return XcomData._bytes_to_guid(value)         # 16 bytes, little endian
             case XcomFormat.STRING: return value.decode('iso-8859-15')          # n bytes, ISO_8859-15 string of 8 bit characters
             case _: 
                 msg = "Unknown data format '{format}"
@@ -48,7 +50,7 @@ class XcomData:
             case XcomFormat.FLOAT: return struct.pack("<f", float(value))      # 4 bytes, little endian, float
             case XcomFormat.INT32: return struct.pack("<i", int(value))        # 4 bytes, little endian, signed long/int32
             case XcomFormat.LONG_ENUM: return struct.pack("<I", int(value))    # 4 bytes, little endian, unsigned long/int32
-            case XcomFormat.GUID: return bytes.fromhex(value.replace(':',''))  # 16 bytes
+            case XcomFormat.GUID: return XcomData._guid_to_bytes(value)        # 16 bytes, little endian
             case XcomFormat.STRING: return value.encode('iso-8859-15')         # n bytes, ISO_8859-15 string of 8 bit characters
             case _: 
                 msg = "Unknown data format '{format}"
@@ -68,6 +70,17 @@ class XcomData:
             case _: 
                 msg = f"Unknown data format '{format}"
                 raise TypeError(msg)
+
+    @staticmethod      
+    def _bytes_to_guid(value: bytes) -> str:
+        guid_obj = uuid.UUID(int=int.from_bytes(value, byteorder='little'))
+        return str(guid_obj)
+    
+    @staticmethod      
+    def _guid_to_bytes(value: str) -> bytes:
+        guid_obj = uuid.UUID(hex=value)
+        guid_int = guid_obj.int
+        return guid_int.to_bytes(16, byteorder='little')
 
 
 class XcomDataMultiInfoReqItem():

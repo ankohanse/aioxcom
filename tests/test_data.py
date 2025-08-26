@@ -22,7 +22,7 @@ async def data_multi_info():
         ("int32",      1234, XcomFormat.INT32, 4),
         ("long enum",  1234, XcomFormat.LONG_ENUM, 4),
         ("float",      123.4, XcomFormat.FLOAT, 4),
-        ("guid",       "00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff", XcomFormat.GUID, 16),
+        ("guid",       "00112233-4455-6677-8899-aabbccddeeff", XcomFormat.GUID, 16),
         ("string",     "abcde", XcomFormat.STRING, 5),
     ]
 )

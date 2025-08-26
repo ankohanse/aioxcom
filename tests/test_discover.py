@@ -250,12 +250,17 @@ async def test_discover_extendedinfo(name, rsp_dest, rsp_dict, exp_code, exp_mod
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("context", "unused_tcp_port")
 @pytest.mark.parametrize(
-    "name, rsp_dest, rsp_dict",
+    "name, rsp_dest, rsp_dict, exp_ip, exp_mac, exp_guid",
     [
-        ("localhost", [], {}),
-    ]
+        ("guid none",   [501], {
+                            "5002": XcomData.pack("137aef81-08b7-4e70-ad89-0dad0563d627", XcomFormat.GUID),    
+                    }, "127.0.0.1", "00:00:00:00:00:00", None),
+        ("guid ok",     [501], {
+                            "0": XcomData.pack("137aef81-08b7-4e70-ad89-0dad0563d627", XcomFormat.GUID),    
+                    }, "127.0.0.1", "00:00:00:00:00:00", "137aef81-08b7-4e70-ad89-0dad0563d627"),
+    ]        
 )
-async def test_clientinfo(name, rsp_dest, rsp_dict, request):
+async def test_clientinfo(name, rsp_dest, rsp_dict, exp_ip, exp_mac, exp_guid, request):
     context = request.getfixturevalue("context")
     port    = request.getfixturevalue("unused_tcp_port")
 
@@ -271,12 +276,17 @@ async def test_clientinfo(name, rsp_dest, rsp_dict, request):
     dataset = await XcomDataset.create(XcomVoltage.AC240)
     discover = XcomDiscover(api=context.server, dataset=dataset)
 
-    # Start task for discover
-    client_info = await discover.discoverClientInfo()
+    # Start 2 parallel tasks, for server and for client
+    task_discover = asyncio.create_task(discover.discoverClientInfo())
+    task_client = asyncio.create_task(context.clientHandler(rsp_dest, rsp_dict))
+    
+    # wait for discover to finish
+    client_info = await task_discover
     discover = None
     dataset = None
 
     # Check discovered info
     assert client_info is not None
-    assert client_info.ip == "127.0.0.1"
-    assert client_info.mac == "00:00:00:00:00:00"
+    assert client_info.ip == exp_ip
+    assert client_info.mac == exp_mac
+    assert client_info.guid == exp_guid
