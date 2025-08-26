@@ -46,25 +46,42 @@ def test_data(name, value, format, expected_length):
 
 
 @pytest.mark.usefixtures("data_multi_info")
-def test_data_multiinfo(request):
-    data_multi_info: XcomDataMultiInfoReq = request.getfixturevalue("data_multi_info")
+def test_data_multiinfo_req(request):
+    req: XcomDataMultiInfoReq = request.getfixturevalue("data_multi_info")
 
     # test pack request
-    buf = data_multi_info.pack()
+    buf = req.pack()
 
     assert buf is not None
-    assert len(buf) == len(data_multi_info.items) * 3
+    assert len(buf) == len(req.items) * 3
+
+    # test unpack request
+    clone = XcomDataMultiInfoReq.unpack(buf)
+
+    assert clone is not None
+    assert type(clone) == type(req)
+    assert len(clone.items) == len(req.items)
+
+    for clone_item in clone.items:
+        assert clone_item.user_info_ref is not None
+        req_item = next((item for item in req.items if item.user_info_ref==clone_item.user_info_ref and item.aggregation_type==clone_item.aggregation_type), None)    
+        assert req_item is not None
+
+
+@pytest.mark.usefixtures("data_multi_info")
+def test_data_multiinfo_rsp(request):
+    req: XcomDataMultiInfoReq = request.getfixturevalue("data_multi_info")
 
     # test pack response
     rsp = XcomDataMultiInfoRsp(
         flags = 123,
         datetime = 456,
-        items = [ XcomDataMultiInfoRspItem(req.user_info_ref, req.aggregation_type, 7.8) for req in data_multi_info.items ],
+        items = [ XcomDataMultiInfoRspItem(req_item.user_info_ref, req_item.aggregation_type, 7.8) for req_item in req.items ],
     )
     buf = rsp.pack()
 
     assert buf is not None
-    assert len(buf) == len(data_multi_info.items) * 7 + 8
+    assert len(buf) == len(rsp.items) * 7 + 8
 
     # test unpack response
     clone = XcomDataMultiInfoRsp.unpack(buf)

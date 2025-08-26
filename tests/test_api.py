@@ -5,7 +5,7 @@ import pytest_asyncio
 
 from aioxcom import XcomApiTcp, XcomDataset, XcomData, XcomPackage
 from aioxcom import XcomApiTimeoutException, XcomApiResponseIsError
-from aioxcom import XcomMultiInfoReq, XcomMultiInfoReqItem, XcomMultiInfoRsp, XcomMultiInfoRspItem
+from aioxcom import XcomValues, XcomValuesItem
 from aioxcom import XcomVoltage, XcomFormat, XcomAggregationType, ScomService, ScomObjType, ScomObjId, ScomQspId, ScomAddress, ScomErrorCode
 from . import XcomTestClientTcp
 
@@ -248,18 +248,18 @@ async def test_requestMulti(name, exp_src_addr, exp_dst_addr, exp_svc_id, exp_ob
 
     dataset = await XcomDataset.create(XcomVoltage.AC240)
 
-    req_data = XcomMultiInfoReq([
-        XcomMultiInfoReqItem(dataset.getByNr(3021), XcomAggregationType.MASTER),
-        XcomMultiInfoReqItem(dataset.getByNr(3022), 'XT1'),
-        XcomMultiInfoReqItem(dataset.getByNr(3023), 101),
+    req_data = XcomValues([
+        XcomValuesItem(dataset.getByNr(3021), XcomAggregationType.MASTER),
+        XcomValuesItem(dataset.getByNr(3022), 'XT1'),
+        XcomValuesItem(dataset.getByNr(3023), 101),
     ])
-    exp_rsp_data = XcomMultiInfoRsp(
+    exp_rsp_data = XcomValues(
         flags = 0x00, 
         datetime = 0, 
         items=[
-            XcomMultiInfoRspItem(dataset.getByNr(3021), XcomAggregationType.MASTER, 12.3),
-            XcomMultiInfoRspItem(dataset.getByNr(3022), XcomAggregationType.DEVICE1, 45.6),
-            XcomMultiInfoRspItem(dataset.getByNr(3023), XcomAggregationType.DEVICE1, 78.9),
+            XcomValuesItem(dataset.getByNr(3021), XcomAggregationType.MASTER, 12.3),
+            XcomValuesItem(dataset.getByNr(3022), XcomAggregationType.DEVICE1, 45.6),
+            XcomValuesItem(dataset.getByNr(3023), XcomAggregationType.DEVICE1, 78.9),
         ]
     )
 

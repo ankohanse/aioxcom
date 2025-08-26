@@ -142,7 +142,7 @@ class XcomAggregationType(IntEnum):
     def __repr__(self):
         return self.name
 
-### values XcomMultiInfoRsp.flags
+### values for XcomValues.flags
 class XcomMultiInfoFlags(IntEnum):
     XCOM_GSM    = 0x00000010, # XCOM-LAN if 0
     XT_PRESENT  = 0x00000020,
@@ -211,6 +211,7 @@ class ScomQspLevel:
 class ScomAddress:
     BROADCAST = 0
     SOURCE    = 1
+    RCC       = 501
 
 ### error codes (internal)
 class ScomErrorCode:

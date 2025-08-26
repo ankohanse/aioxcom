@@ -10,6 +10,7 @@
 
 import asyncio
 import binascii
+from enum import IntEnum
 import logging
 import struct
 from io import BufferedWriter, BufferedReader, BytesIO
@@ -29,6 +30,7 @@ from .xcom_data import (
 )
 from .xcom_datapoints import (
     XcomDatapoint,
+    XcomDataset,
 )
 from .xcom_families import (
     XcomDeviceFamilies,
@@ -40,15 +42,12 @@ _LOGGER = logging.getLogger(__name__)
 
 MULTI_INFO_REQ_MAX = 76
 
+class XcomValuesItem():
+    datapoint: XcomDatapoint                # Both in request and response
+    aggregation_type: XcomAggregationType   # Both in request and response
+    value: Any                              # Only in answer from requestValues()
 
-class XcomMultiInfoReqItem(XcomDataMultiInfoReqItem):
-    datapoint: XcomDatapoint
-
-    # From base class:
-    # - user_info_ref: int
-    # - aggregation_type: XcomAggregationType
-
-    def __init__(self, datapoint: XcomDatapoint, aggregation_type: Any):
+    def __init__(self, datapoint: XcomDatapoint, aggregation_type: Any, value:Any=None):
 
         # Sanity check
         if datapoint.obj_type != ScomObjType.INFO:
@@ -59,43 +58,8 @@ class XcomMultiInfoReqItem(XcomDataMultiInfoReqItem):
 
         # Set properties
         self.datapoint = datapoint
-        super().__init__(datapoint.nr, aggr)
-
-
-class XcomMultiInfoReq(XcomDataMultiInfoReq):
-
-    # From base class:
-    # - items: Iterable[XcomDataMultiInfoReqItem]
-
-    def __init__(self, items: Iterable[XcomMultiInfoReqItem]):
-
-        # Sanity check
-        if len(items) < 1:
-            raise XcomParamException("No multi-info request items passed")
-        if len(items) > MULTI_INFO_REQ_MAX:
-            raise XcomParamException(f"Too many multi-info request items passed, maximum is {MULTI_INFO_REQ_MAX} in one request")
-    
-        # Set properties
-        super().__init__(items)
-
-    # From base class:
-    # -  def pack(self) -> bytes:
-
-
-class XcomMultiInfoRspItem(XcomDataMultiInfoRspItem):
-    datapoint: XcomDatapoint
-    value: Any
-
-    # From base class:
-    # - user_info_ref: int
-    # - aggregation_type: XcomAggregationType
-    # - data: float
-
-    def __init__(self, datapoint: XcomDatapoint, aggregation_type: XcomAggregationType, value: Any):
-        self.datapoint = datapoint
+        self.aggregation_type = aggr
         self.value = value
-
-        super().__init__(datapoint.nr, aggregation_type, float(value))
 
     @property
     def addr(self):
@@ -112,38 +76,69 @@ class XcomMultiInfoRspItem(XcomDataMultiInfoRspItem):
             return str(self.aggregation_type)
 
 
-class XcomMultiInfoRsp(XcomDataMultiInfoRsp):
+class XcomValues():
+    items: Iterable[XcomValuesItem] # Both in request and response
+    flags: int                      # Only in response from requestValues
+    datetime: int                   # Only in response from requestValues
 
-    # From base class:
-    # - flags: int
-    # - datetime: int
-    # - items: list[XcomDataMultiInfoRspItem]
+    def __init__(self, items: Iterable[XcomValuesItem], flags:int=None, datetime:int=None):
 
-    def __init__(self, flags, datetime, items):
-        super().__init__(flags, datetime, items)
-
-    # From base class:
-    # - def pack(self) -> bytes:
-    # - def unpack(buf: bytes) -> XcomDataMultiInfoRsp:
+        # Sanity check
+        if len(items) < 1:
+            raise XcomParamException("No values items passed")
+        if len(items) > MULTI_INFO_REQ_MAX:
+            raise XcomParamException(f"Too values items passed, maximum is {MULTI_INFO_REQ_MAX} in one request")
+    
+        self.items = items
+        self.flags = flags
+        self.datetime = datetime
 
     @staticmethod
-    def unpack(buf: bytes, req_data: XcomMultiInfoReq):
-        # Unpack the data
+    def unpackRequest(buf: bytes, dataset: XcomDataset):
+        """Unpack request data; only used for unit-tests"""
+        req = XcomDataMultiInfoReq.unpack(buf)
+
+        # Resolve additional properties
+        items = list()
+        for item in req.items:
+            items.append(XcomValuesItem(
+                datapoint = dataset.getByNr(item.user_info_ref),
+                aggregation_type = item.aggregation_type
+            ))
+        return XcomValues(items)
+
+    @staticmethod
+    def unpackResponse(buf: bytes, req: 'XcomValues'):
+        """Unpack response data"""
         rsp = XcomDataMultiInfoRsp.unpack(buf)
 
         # Resolve additional properties
         items = list()
         for item in rsp.items:
-            datapoint = next((i.datapoint for i in req_data.items if i.datapoint.nr==item.user_info_ref), None)
+            datapoint = next((i.datapoint for i in req.items if i.datapoint.nr==item.user_info_ref), None)
             aggregation_type = item.aggregation_type
             value = XcomData.cast(item.data, datapoint.format)
 
-            items.append(XcomMultiInfoRspItem(
+            items.append(XcomValuesItem(
                 datapoint,
                 aggregation_type,
                 value
             ))
 
-        return XcomMultiInfoRsp(rsp.flags, rsp.datetime, items)
+        return XcomValues(items, rsp.flags, rsp.datetime)
 
-
+    def packRequest(self) -> bytes:
+        """Pack a request"""
+        req = XcomDataMultiInfoReq(
+            items = [XcomDataMultiInfoReqItem(i.datapoint.nr, i.aggregation_type) for i in self.items]
+        )
+        return req.pack()
+            
+    def packResponse(self) -> bytes:
+        """Pack a response; only used for unit-testing"""
+        rsp = XcomDataMultiInfoRsp(
+            flags = self.flags,
+            datetime = self.datetime,
+            items = [XcomDataMultiInfoRspItem(i.datapoint.nr, i.aggregation_type, float(i.value)) for i in self.items]
+        )
+        return rsp.pack()

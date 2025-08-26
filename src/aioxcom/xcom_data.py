@@ -89,6 +89,24 @@ class XcomDataMultiInfoReq:
     def __init__(self, items: Iterable[XcomDataMultiInfoReqItem]):
         self.items = items
 
+    @staticmethod
+    def unpack(buf: bytes) -> 'XcomDataMultiInfoReq':
+        f = BytesIO(buf)
+        f_len = f.getbuffer().nbytes
+        items = list()
+
+        while f_len >= 3:
+            user_info_ref = readUInt16(f)
+            aggr = readUInt8(f)
+            f_len -= 3
+
+            items.append(XcomDataMultiInfoReqItem(
+                user_info_ref,
+                XcomAggregationType(aggr),
+            ))
+
+        return XcomDataMultiInfoReq(items)
+
     def pack(self) -> bytes:
         f = BytesIO()
         for item in self.items:

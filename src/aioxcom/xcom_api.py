@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import Iterable
 
 from .xcom_const import (
+    ScomAddress,
     XcomLevel,
     XcomFormat,
     ScomObjType,
@@ -27,10 +28,8 @@ from .xcom_data import (
     XcomDataMessageRsp,
 )
 from .xcom_multi_info import (
-    XcomMultiInfoReq,
-    XcomMultiInfoReqItem,
-    XcomMultiInfoRsp,
-    XcomMultiInfoRspItem,
+    XcomValues,
+    XcomValuesItem,
 )
 from .xcom_datapoints import (
     XcomDatapoint,
@@ -147,7 +146,7 @@ class XcomApiBase:
             object_id = ScomObjId.NONE,
             property_id = ScomQspId.NONE,
             property_data = XcomData.NONE,
-            dst_addr = XcomDeviceFamilies.RCC.addrDevicesStart
+            dst_addr = ScomAddress.RCC
         )
 
         response = await self._sendRequest(request, retries=retries, timeout=timeout, verbose=verbose)
@@ -197,7 +196,7 @@ class XcomApiBase:
                 raise XcomApiUnpackException(msg) from None
 
                                          
-    async def requestValues(self, multi_info_req_data: XcomMultiInfoReq, retries = None, timeout = None, verbose=False) -> XcomMultiInfoRsp:
+    async def requestValues(self, request_data: XcomValues, retries = None, timeout = None, verbose=False) -> XcomValues:
         """
         Request multiple infos in one call.
         Returns None if not connected, otherwise returns the list of requested values
@@ -207,7 +206,7 @@ class XcomApiBase:
             XcomApiTimeoutException
             XcomApiResponseIsError
 
-        Note: this requires at least firmware version 1.6.74 on your Xcom-232/Xcom-LAN.
+        Note: this requires at least firmware version 1.6.74 on your Xcom-232i/Xcom-LAN.
               On older versions it results in a 'Service not supported' response from the Xcom client
         """
 
@@ -217,15 +216,15 @@ class XcomApiBase:
             object_type = ScomObjType.MULTI_INFO,
             object_id = ScomObjId.MULTI_INFO,
             property_id = self._getNextRequestId() & 0xffff,
-            property_data = multi_info_req_data.pack(),
-            dst_addr = XcomDeviceFamilies.RCC.addrDevicesStart
+            property_data = request_data.packRequest(),
+            dst_addr = ScomAddress.RCC
         )
 
         response = await self._sendRequest(request, retries=retries, timeout=timeout, verbose=verbose)
         if response is not None:
             try:
                 # Unpack the response value
-                return XcomMultiInfoRsp.unpack(response.frame_data.service_data.property_data, multi_info_req_data)
+                return XcomValues.unpackResponse(response.frame_data.service_data.property_data, request_data)
 
             except Exception as e:
                 msg = f"Failed to unpack response package for multi-info request, data={response.frame_data.service_data.property_data.hex()}: {e}"

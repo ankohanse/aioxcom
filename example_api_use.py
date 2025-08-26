@@ -2,7 +2,7 @@ import asyncio
 import logging
 import sys
 
-from aioxcom import XcomApiTcp, XcomDataset, XcomDatapoint, XcomData, XcomMultiInfoReq, XcomMultiInfoReqItem
+from aioxcom import XcomApiTcp, XcomDataset, XcomDatapoint, XcomData, XcomValues, XcomValuesItem
 from aioxcom import XcomVoltage, XcomAggregationType
 
 # Setup logging to StdOut
@@ -37,19 +37,19 @@ async def main():
         value = await api.requestValue(param_5012, "RCC")    # rcc address range is only 501, or use "RCC"
         logger.info(f"RCC {param_5012.nr}: {param_5012.enum_value(value)} {param_5012.unit or ''} ({param_5012.name})")
 
-        # Retrieve multiple params in one call. Note this will fail for some older Xcom-232i firmware versions
+        # Retrieve multiple params in one call. This requires at least firmware version 1.6.74 on your Xcom-232i/Xcom-LAN.
         try:
-            req = XcomMultiInfoReq([
-                XcomMultiInfoReqItem(info_3021, XcomAggregationType.SUM),      # pass an XcomAggregationType constant
-                XcomMultiInfoReqItem(info_3022, "XT1"),                        # alternatively pass a device code
-                XcomMultiInfoReqItem(info_3023, 101),                          # alternatively pass a device address
+            req = XcomValues([
+                XcomValuesItem(info_3021, XcomAggregationType.SUM),      # pass an XcomAggregationType constant
+                XcomValuesItem(info_3022, "XT1"),                        # alternatively pass a device code
+                XcomValuesItem(info_3023, 101),                          # alternatively pass a device address
             ])
             rsp = await api.requestValues(req)
             if rsp:
-                logger.info(f"Multi-info flags: {rsp.flags}")
-                logger.info(f"Multi-info datetime: {rsp.datetime}")
+                logger.info(f"Values flags: {rsp.flags}")
+                logger.info(f"Values datetime: {rsp.datetime}")
                 for item in rsp.items:
-                    logger.info(f"Multi-info {item.code} {item.datapoint.nr}: {item.value} {item.datapoint.unit or ''} ({item.datapoint.name})")
+                    logger.info(f"Values {item.code} {item.datapoint.nr}: {item.value} {item.datapoint.unit or ''} ({item.datapoint.name})")
 
         except Exception as ex:
             logger.warning(ex)
