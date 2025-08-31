@@ -22,6 +22,9 @@ from .xcom_const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+MULTI_INFO_REQ_MAX = 76
+
+
 class XcomData:
     NONE = b''
 
@@ -100,6 +103,13 @@ class XcomDataMultiInfoReq:
     items: Iterable[XcomDataMultiInfoReqItem]
 
     def __init__(self, items: Iterable[XcomDataMultiInfoReqItem]):
+        
+        # Sanity check
+        if len(items) < 1:
+            raise XcomParamException("No values items passed")
+        if len(items) > MULTI_INFO_REQ_MAX:
+            raise XcomParamException(f"Too values items passed, maximum is {MULTI_INFO_REQ_MAX} in one request")
+
         self.items = items
 
     @staticmethod

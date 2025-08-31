@@ -3,7 +3,7 @@ import logging
 import sys
 
 from aioxcom import XcomApiTcp, XcomDataset, XcomDatapoint, XcomData, XcomValues, XcomValuesItem
-from aioxcom import XcomVoltage, XcomAggregationType
+from aioxcom import XcomVoltage, XcomAggregationType, XcomFormat
 
 # Setup logging to StdOut
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
@@ -25,6 +25,10 @@ async def main():
             logger.info(f"Did not connect to Xcom")
             return
 
+        # Retrieve individual infos and params
+        logger.info(f"")
+        logger.info(f"Retrieve infos and params via individual calls")
+
         # Retrieve info #3023 from the first Xtender (Output power)
         value = await api.requestValue(info_3023, "XT1")    # xt address range is 101 to 109, or use "XT1" to "XT9"
         logger.info(f"XT1 {info_3023.nr}: {value} {info_3023.unit or ''} ({info_3023.name})")
@@ -37,24 +41,54 @@ async def main():
         value = await api.requestValue(param_5012, "RCC")    # rcc address range is only 501, or use "RCC"
         logger.info(f"RCC {param_5012.nr}: {param_5012.enum_value(value)} {param_5012.unit or ''} ({param_5012.name})")
 
-        # Retrieve multiple params in one call. This requires at least firmware version 1.6.74 on your Xcom-232i/Xcom-LAN.
+        # Retrieve multiple values (any combination of infos or params) in one call.
+        logger.info(f"")
+        logger.info(f"Retrieve multiple infos and params in one call")
+
+        req = XcomValues([
+            XcomValuesItem(info_3021, code="XT1"),  # xt address range is 101 to 109, or use "XT1" to "XT9"
+            XcomValuesItem(info_3022, code="XT1"),
+            XcomValuesItem(info_3023, address=101),
+            XcomValuesItem(info_7002, code="BSP"),
+            XcomValuesItem(param_5012, code="RCC"),
+        ])
+        rsp = await api.requestValues(req)
+        if rsp:
+            for item in rsp.items:
+                item_value = item.value if item.datapoint.format not in [XcomFormat.LONG_ENUM, XcomFormat.SHORT_ENUM] else item.datapoint.enum_value(item.value)
+
+                logger.info(f"Values {item.code} {item.datapoint.nr}: {item_value} {item.datapoint.unit or ''} ({item.datapoint.name})")
+
+        # Retrieve multiple infos in one call and perform aggregation.
+        # Cannot be used on params.
+        # This requires at least firmware version 1.6.74 on your Xcom-232i/Xcom-LAN.
+        logger.info(f"")
+        logger.info(f"Retrieve multiple infos with aggregation in one call")
         try:
             req = XcomValues([
-                XcomValuesItem(info_3021, XcomAggregationType.SUM),      # pass an XcomAggregationType constant
-                XcomValuesItem(info_3022, "XT1"),                        # alternatively pass a device code
-                XcomValuesItem(info_3023, 101),                          # alternatively pass a device address
+                XcomValuesItem(info_3021, aggregation_type=XcomAggregationType.SUM),      
+                XcomValuesItem(info_3022, aggregation_type=XcomAggregationType.AVERAGE),  
             ])
-            rsp = await api.requestValues(req)
+            rsp = await api.requestInfos(req)
             if rsp:
-                logger.info(f"Values flags: {rsp.flags}")
-                logger.info(f"Values datetime: {rsp.datetime}")
+                logger.info(f"Infos flags: {rsp.flags}")
+                logger.info(f"Infos datetime: {rsp.datetime}")
                 for item in rsp.items:
-                    logger.info(f"Values {item.code} {item.datapoint.nr}: {item.value} {item.datapoint.unit or ''} ({item.datapoint.name})")
+                    item_code = item.code if item.code is not None else str(item.aggregation_type)
+                    item_value = item.value if item.datapoint.format not in [XcomFormat.LONG_ENUM, XcomFormat.SHORT_ENUM] else item.datapoint.enum_value(item.value)
+
+                    logger.info(f"Infos {item_code} {item.datapoint.nr}: {item.value} {item.datapoint.unit or ''} ({item.datapoint.name})")
 
         except Exception as ex:
             logger.warning(ex)
 
         # Retrieve and Update param 1107 on the first Xtender (Maximum current of AC source)
+        # Note the the change is written into RAM memory; a subsequent requestValue will be taken 
+        # from Flash memory and will not show the change. During its operation the Xtender will 
+        # still use the updated value from RAM (until a full restart of the Xtender).
+        logger.info(f"")
+        logger.info(f"Retrieve and then update a param")
+
         value = await api.requestValue(param_1107, "XT1")
         logger.info(f"XT1 {param_1107.nr}: {value} {param_1107.unit} ({param_1107.name})")
 
@@ -63,6 +97,9 @@ async def main():
             logger.info(f"XT1 {param_1107.nr} updated to {value} {param_1107.unit} ({param_1107.name})")
 
         # Retrieve unique guid for this installation
+        logger.info(f"")
+        logger.info(f"Retrieve unique guid of this installation")
+
         value = await api.requestGuid()
         logger.info(f"Installation Guid: {value}")
 
@@ -70,6 +107,7 @@ async def main():
         logger.info(f"Unexpected exception: {e}")
 
     finally:
+        logger.info(f"")
         await api.stop()
 
 

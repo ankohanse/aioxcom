@@ -19,15 +19,17 @@ from .xcom_const import (
     ScomService,
     ScomQspId,
     ScomErrorCode,
+    XcomParamException,
+    safe_len,
 )
 from .xcom_protocol import (
     XcomPackage,
 )
 from .xcom_data import (
     XcomData,
-    XcomDataMessageRsp,
+    MULTI_INFO_REQ_MAX,
 )
-from .xcom_multi_info import (
+from .xcom_values import (
     XcomValues,
     XcomValuesItem,
 )
@@ -196,9 +198,11 @@ class XcomApiBase:
                 raise XcomApiUnpackException(msg) from None
 
                                          
-    async def requestValues(self, request_data: XcomValues, retries = None, timeout = None, verbose=False) -> XcomValues:
+    async def requestInfos(self, request_data: XcomValues, retries = None, timeout = None, verbose=False) -> XcomValues:
         """
         Request multiple infos in one call.
+        Per info you can indicate what device to get it from, or to get Average or Sum of multiple devices
+
         Returns None if not connected, otherwise returns the list of requested values
         Throws
             XcomApiWriteException
@@ -209,6 +213,14 @@ class XcomApiBase:
         Note: this requires at least firmware version 1.6.74 on your Xcom-232i/Xcom-LAN.
               On older versions it results in a 'Service not supported' response from the Xcom client
         """
+
+        # Sanity check
+        for item in request_data.items:
+            if item.datapoint.obj_type != ScomObjType.INFO:
+                raise XcomParamException(f"Invalid datapoint passed to requestInfos; must have obj_type INFO. Violated by datapoint '{item.datapoint.name}' ({item.datapoint.nr})")
+            
+            if item.aggregation_type not in XcomAggregationType:
+                raise XcomParamException(f"Invalid aggregation_type passed to requestInfos; violated by '{item.aggregation_type}'")                
 
         # Compose the request and send it
         request: XcomPackage = XcomPackage.genPackage(
@@ -229,6 +241,111 @@ class XcomApiBase:
             except Exception as e:
                 msg = f"Failed to unpack response package for multi-info request, data={response.frame_data.service_data.property_data.hex()}: {e}"
                 raise XcomApiUnpackException(msg) from None
+
+
+    async def requestValues(self, request_data: XcomValues, retries = None, timeout = None, verbose=False) -> XcomValues:
+        """
+        Request multiple infos and params in one call.
+        Can only retrieve actual device values, NOT the average or sum over multiple devices.
+
+        The function will try to be as efficient as possible and combine retrieval of multiple infos in one call.
+        When the xcom-client does not support multiple-infos in one call, they are retried one by one. 
+        Requested params are always retrieved one by one, so the function can take a while to finish.        
+
+        Returns None if not connected, otherwise returns the list of requested values
+        Throws
+            XcomApiWriteException
+            XcomApiReadException
+            XcomApiTimeoutException
+            XcomApiResponseIsError
+        """
+
+        # Sort out which XcomValues can be done via multi requestValues and which must be done via single requestValue
+        req_singles: list[XcomValuesItem] = []
+        req_multi_items: list[XcomValuesItem] = []
+        req_multis: list[XcomValues] = []
+        idx_last = safe_len(request_data.items)-1
+
+        for idx,item in enumerate(request_data.items):
+            
+            match item.datapoint.obj_type:
+                case ScomObjType.INFO:
+                    if item.aggregation_type is not None and item.aggregation_type in range(XcomAggregationType.DEVICE1, XcomAggregationType.DEVICE15+1):
+                        # Can be combined with other infos in a requestValues call
+                        req_multi_items.append(item)
+
+                    elif item.address is not None:
+                        # Any others need to be done via an individual requestValue cal
+                        req_singles.append(item)
+
+                    else:
+                        raise XcomParamException(f"Invalid XcomValuesItem passed to requestValues; violated by code='{item.code}', address={item.address}, aggregation_type={item.aggregation_type}")
+
+                case ScomObjType.PARAMETER:
+                    if item.address is not None:
+                        # Needs to be done via an individual requestValue call
+                        req_singles.append(item)
+
+                    else:
+                        raise XcomParamException(f"Invalid XcomValuesItem passed to requestValues; violated by code='{item.code}', address={item.address}, aggregation_type={item.aggregation_type}")
+            
+            if (len(req_multi_items) == MULTI_INFO_REQ_MAX) or \
+               (len(req_multi_items) > 0 and idx == idx_last):
+
+                # Start a new multi-items if current one if full or on last item of enumerate
+                req_multis.append( XcomValues(items=req_multi_items) )
+                req_multi_items = []
+
+        # Now perform all the multi requestValues requests
+        result_items: list[XcomValues] = []
+
+        for req_multi in req_multis:
+            try:
+                rsp_multi = await self.requestInfos(req_multi, retries=retries, timeout=timeout, verbose=verbose)
+
+                # Success; gather the returned response items
+                result_items.extend(rsp_multi.items)
+            
+            except XcomApiTimeoutException as tex:
+                _LOGGER.debug(f"Failed to retrieve infos via single call. {tex}")
+
+                # Fail; do not retry as single requestValue also expected to give timeout
+                value = None
+                error = str(tex)
+                result_items.extend( [XcomValuesItem(req.datapoint, code=req.code, address=req.address, aggregation_type=req.aggregation_type, value=value, error=error) for req in req_multi.items] )
+            
+            except Exception as ex:
+                _LOGGER.debug(f"Failed to retrieve infos via single call; will retry retrieve one-by-one. {ex}")
+
+                # Fail; retry all items as single requestValue
+                req_singles.extend(req_multi.items)
+
+        # Next perform all the single requestValue requests
+        for req_single in req_singles:
+            try:
+                error = None
+                value = await self.requestValue(req_single.datapoint, req_single.address, retries=retries, timeout=timeout, verbose=verbose)
+            
+            except Exception as ex:
+                value = None
+                error = str(ex)
+
+            if error is not None:
+                _LOGGER.debug(f"Failed to retrieve info or param {req_single.datapoint.nr}:{req_single.address}; {error}")
+
+            # Add to results
+            rsp_single = XcomValuesItem(
+                datapoint = req_single.datapoint, 
+                code = req_single.code,
+                address = req_single.address,
+                aggregation_type=req_single.aggregation_type, 
+                value = value,
+                error = error,
+            )
+            result_items.append(rsp_single)
+
+        # Return all reponse items as one XcomValues object
+        return XcomValues(result_items)
 
 
     async def updateValue(self, parameter: XcomDatapoint, value, dstAddr = 100, retries = None, timeout = None, verbose=False):
@@ -292,9 +409,7 @@ class XcomApiBase:
                     return None
 
                 if response.isError():
-                    message = response.getError()
-                    msg = f"Response package for {request.frame_data.service_data.object_id}:{request.header.dst_addr} contains message: '{message}'"
-                    raise XcomApiResponseIsError(msg)
+                    raise XcomApiResponseIsError(response.getError())
                 
                 # Success
                 return response

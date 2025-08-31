@@ -6,6 +6,7 @@
 
 from dataclasses import dataclass
 from enum import IntEnum, StrEnum
+from typing import Iterable
 
 
 class XcomParamException(Exception):
@@ -253,3 +254,10 @@ class ScomErrorCode:
                 return key
 
         return f"unknown error '{error:04x}'"
+    
+
+def safe_len(lst: Iterable):
+    try:
+        return len(lst)
+    except:
+        return sum(1 for i in lst) 

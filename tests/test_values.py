@@ -14,24 +14,32 @@ async def dataset():
 @pytest_asyncio.fixture
 async def values_req(dataset):
     info_3021 = dataset.getByNr(3021)
+    info_3022 = dataset.getByNr(3022)
+    info_3023 = dataset.getByNr(3023)
     info_3032 = dataset.getByNr(3032)
 
     yield XcomValues([
-        XcomValuesItem(info_3021, XcomAggregationType.MASTER),
-        XcomValuesItem(info_3032, XcomAggregationType.DEVICE1),
+        XcomValuesItem(info_3021, code='XT1'),
+        XcomValuesItem(info_3022, address=101),
+        XcomValuesItem(info_3023, aggregation_type=XcomAggregationType.MASTER),
+        XcomValuesItem(info_3032, aggregation_type=XcomAggregationType.DEVICE1),
     ])
 
 @pytest_asyncio.fixture
 async def values_rsp(dataset):
     info_3021 = dataset.getByNr(3021)
+    info_3022 = dataset.getByNr(3022)
+    info_3023 = dataset.getByNr(3023)
     info_3032 = dataset.getByNr(3032)
 
     yield XcomValues(
         flags = 123,
         datetime = 456,
         items = [
-            XcomValuesItem(info_3021, XcomAggregationType.MASTER, 1.0),   # Float
-            XcomValuesItem(info_3032, XcomAggregationType.DEVICE1, 7),    # Long Enum
+            XcomValuesItem(info_3021, code='XT1', value=1.0),   # Float
+            XcomValuesItem(info_3022, address=101, value=2.0),     # Float
+            XcomValuesItem(info_3023, aggregation_type=XcomAggregationType.MASTER, value=3.0),   # Float
+            XcomValuesItem(info_3032, aggregation_type=XcomAggregationType.DEVICE1, value=7),    # Long Enum
         ]
     )
 
@@ -71,7 +79,11 @@ async def test_pack_unpack(name, values_fixture, request):
         assert clone_item.datapoint is not None
         org_item = next((item for item in values_def.items if item.datapoint.nr == clone_item.datapoint.nr and item.aggregation_type==clone_item.aggregation_type), None)    
         assert org_item is not None
+        assert clone_item.aggregation_type is not None
+        # clone_item.code could be None or not None
+        # clone_item.address could be None or not None
 
+        assert clone_item.code == org_item.code
+        assert clone_item.address == org_item.address
         assert clone_item.aggregation_type == org_item.aggregation_type
         assert clone_item.value == org_item.value
-        assert clone_item.code is not None
