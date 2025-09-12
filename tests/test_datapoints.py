@@ -1,6 +1,6 @@
 import pytest
 import pytest_asyncio
-from aioxcom import XcomDataset, XcomVoltage, XcomFormat, ScomObjType, XcomDatapointUnknownException
+from aioxcom import XcomDataset, XcomVoltage, XcomFormat, XcomCategory, XcomDatapointUnknownException
 
 
 @pytest.mark.asyncio
@@ -20,13 +20,13 @@ async def test_nr():
     assert param.family_id == "xt"
     assert param.nr == 1107
     assert param.format == XcomFormat.FLOAT
-    assert param.obj_type == ScomObjType.PARAMETER
+    assert param.category == XcomCategory.PARAMETER
 
     param = dataset.getByNr(1552)
     assert param.family_id == "xt"
     assert param.nr == 1552
     assert param.format == XcomFormat.LONG_ENUM
-    assert param.obj_type == ScomObjType.PARAMETER
+    assert param.category == XcomCategory.PARAMETER
     assert param.options != None
     assert type(param.options) is dict
     assert len(param.options) == 3
@@ -35,19 +35,19 @@ async def test_nr():
     assert param.family_id == "xt"
     assert param.nr == 3000
     assert param.format == XcomFormat.FLOAT
-    assert param.obj_type == ScomObjType.INFO
+    assert param.category == XcomCategory.INFO
 
     param = dataset.getByNr(3000, "xt")
     assert param.family_id == "xt"
     assert param.nr == 3000
     assert param.format == XcomFormat.FLOAT
-    assert param.obj_type == ScomObjType.INFO
+    assert param.category == XcomCategory.INFO
 
     param = dataset.getByNr(5012, "rcc")
     assert param.family_id == "rcc"
     assert param.nr == 5012
     assert param.format == XcomFormat.LONG_ENUM
-    assert param.obj_type == ScomObjType.PARAMETER
+    assert param.category == XcomCategory.PARAMETER
     assert param.options != None
     assert type(param.options) is dict
 

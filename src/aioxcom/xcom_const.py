@@ -151,6 +151,11 @@ class XcomMultiInfoFlags(IntEnum):
     VT_PRESENT  = 0x00000080,
     VS_PRESENT  = 0x00000100,
 
+### values for category
+class XcomCategory:
+    INFO       = 0x0001
+    PARAMETER  = 0x0002
+
 ### object_type (internal)
 class ScomObjType:
     INFO       = 0x0001

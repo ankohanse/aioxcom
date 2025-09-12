@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from .xcom_const import (
     XcomLevel,
     XcomFormat,
-    ScomObjType,
+    XcomCategory,
     XcomVoltage,
 )
 
@@ -84,15 +84,15 @@ class XcomDatapoint:
         return XcomDatapoint(family_id, level, parent, number, name, abbr, unit, format, default, minimum, maximum, increment, options)
         
     @property
-    def obj_type(self):
+    def category(self):
         if self.level in [XcomLevel.INFO]:
-            return ScomObjType.INFO
+            return XcomCategory.INFO
 
         if self.level in [XcomLevel.VO, XcomLevel.BASIC, XcomLevel.EXPERT, XcomLevel.INST, XcomLevel.QSP]:
-            return ScomObjType.PARAMETER
+            return XcomCategory.PARAMETER
             
-        _LOGGER.debug(f"Unknown obj_type for datapoint {self.nr} with level {self.level} and format {self.format}")
-        return ScomObjType.INFO
+        _LOGGER.debug(f"Unknown category for datapoint {self.nr} with level {self.level} and format {self.format}")
+        return XcomCategory.INFO
     
     def enum_value(self, key):
         if self.format not in [XcomFormat.LONG_ENUM, XcomFormat.SHORT_ENUM]:

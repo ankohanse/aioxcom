@@ -1,4 +1,4 @@
-from .xcom_const import XcomVoltage, XcomLevel, XcomFormat, XcomAggregationType, XcomParamException
+from .xcom_const import XcomVoltage, XcomLevel, XcomFormat, XcomCategory, XcomAggregationType, XcomParamException
 from .xcom_api import XcomApiTcp, XcomApiWriteException, XcomApiReadException, XcomApiTimeoutException, XcomApiUnpackException, XcomApiResponseIsError
 from .xcom_values import XcomValues, XcomValuesItem
 from .xcom_datapoints import XcomDataset, XcomDatapoint, XcomDatapointUnknownException

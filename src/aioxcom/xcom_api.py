@@ -12,7 +12,7 @@ from .xcom_const import (
     ScomAddress,
     XcomLevel,
     XcomFormat,
-    ScomObjType,
+    XcomCategory,
     XcomAggregationType,
     ScomObjType,
     ScomObjId,
@@ -181,9 +181,9 @@ class XcomApiBase:
         # Compose the request and send it
         request: XcomPackage = XcomPackage.genPackage(
             service_id = ScomService.READ,
-            object_type = parameter.obj_type,
+            object_type = ScomObjType.PARAMETER if parameter.category == XcomCategory.PARAMETER else ScomObjType.INFO,
             object_id = parameter.nr,
-            property_id = ScomQspId.UNSAVED_VALUE if parameter.obj_type == ScomObjType.PARAMETER else ScomQspId.VALUE,
+            property_id = ScomQspId.UNSAVED_VALUE if parameter.category == XcomCategory.PARAMETER else ScomQspId.VALUE,
             property_data = XcomData.NONE,
             dst_addr = dstAddr
         )
@@ -217,8 +217,8 @@ class XcomApiBase:
 
         # Sanity check
         for item in request_data.items:
-            if item.datapoint.obj_type != ScomObjType.INFO:
-                raise XcomParamException(f"Invalid datapoint passed to requestInfos; must have obj_type INFO. Violated by datapoint '{item.datapoint.name}' ({item.datapoint.nr})")
+            if item.datapoint.category != XcomCategory.INFO:
+                raise XcomParamException(f"Invalid datapoint passed to requestInfos; must have type INFO. Violated by datapoint '{item.datapoint.name}' ({item.datapoint.nr})")
             
             if item.aggregation_type not in XcomAggregationType:
                 raise XcomParamException(f"Invalid aggregation_type passed to requestInfos; violated by '{item.aggregation_type}'")                
@@ -269,8 +269,8 @@ class XcomApiBase:
 
         for idx,item in enumerate(request_data.items):
             
-            match item.datapoint.obj_type:
-                case ScomObjType.INFO:
+            match item.datapoint.category:
+                case XcomCategory.INFO:
                     if item.aggregation_type is not None and item.aggregation_type in range(XcomAggregationType.DEVICE1, XcomAggregationType.DEVICE15+1):
                         # Can be combined with other infos in a requestValues call
                         req_multi_items.append(item)
@@ -282,7 +282,7 @@ class XcomApiBase:
                     else:
                         raise XcomParamException(f"Invalid XcomValuesItem passed to requestValues; violated by code='{item.code}', address={item.address}, aggregation_type={item.aggregation_type}")
 
-                case ScomObjType.PARAMETER:
+                case XcomCategory.PARAMETER:
                     if item.address is not None:
                         # Needs to be done via an individual requestValue call
                         req_singles.append(item)
@@ -372,9 +372,9 @@ class XcomApiBase:
             XcomApiTimeoutException
             XcomApiResponseIsError
         """
-        # Sanity check: the parameter/datapoint must have obj_type == ScomObjType.PARAMETER
-        if parameter.obj_type != ScomObjType.PARAMETER:
-            _LOGGER.warn(f"Ignoring attempt to update readonly infos value {parameter}")
+        # Sanity check: the parameter/datapoint must have category == XcomDatapointType.PARAMETER
+        if parameter.category != XcomCategory.PARAMETER:
+            _LOGGER.warning(f"Ignoring attempt to update readonly infos value {parameter}")
             return None
 
         if type(dstAddr) is str:
