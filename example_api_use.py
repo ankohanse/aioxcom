@@ -46,11 +46,32 @@ async def main():
         logger.info(f"Retrieve multiple infos and params in one call")
 
         req = XcomValues([
-            XcomValuesItem(info_3021, code="XT1"),  # xt address range is 101 to 109, or use "XT1" to "XT9"
-            XcomValuesItem(info_3022, code="XT1"),
-            XcomValuesItem(info_3023, address=101),
-            XcomValuesItem(info_7002, code="BSP"),
-            XcomValuesItem(param_5012, code="RCC"),
+            XcomValuesItem(dataset.getByNr(1107, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(1381, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(1382, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(1442, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(1443, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(1444, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(3020, "xt"), code="XT1"),  # xt range is address=101 to 109, or use code="XT1" to "XT9"
+            XcomValuesItem(dataset.getByNr(3028, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(3031, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(3032, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(3049, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(3078, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(3081, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(3083, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(3101, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(3104, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(3119, "xt"), code="XT1"),
+            XcomValuesItem(dataset.getByNr(5002, "rcc"), code="RCC"),
+            XcomValuesItem(dataset.getByNr(5012, "rcc"), code="RCC"),
+            XcomValuesItem(dataset.getByNr(5101, "rcc"), code="RCC"),
+            XcomValuesItem(dataset.getByNr(7007, "bsp"), code="BSP"),
+            XcomValuesItem(dataset.getByNr(7008, "bsp"), code="BSP"),
+            XcomValuesItem(dataset.getByNr(7030, "bsp"), code="BSP"),
+            XcomValuesItem(dataset.getByNr(7031, "bsp"), code="BSP"),
+            XcomValuesItem(dataset.getByNr(7032, "bsp"), code="BSP"),
+            XcomValuesItem(dataset.getByNr(7033, "bsp"), code="BSP"),
         ])
         rsp = await api.requestValues(req)
         if rsp:

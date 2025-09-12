@@ -84,7 +84,7 @@ class XcomDatapoint:
         return XcomDatapoint(family_id, level, parent, number, name, abbr, unit, format, default, minimum, maximum, increment, options)
         
     @property
-    def category(self):
+    def category(self) -> XcomCategory:
         if self.level in [XcomLevel.INFO]:
             return XcomCategory.INFO
 
