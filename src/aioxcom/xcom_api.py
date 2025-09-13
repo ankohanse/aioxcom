@@ -598,12 +598,14 @@ class XcomApiTcp(XcomApiBase):
                         response.frame_data.service_data.property_id == request.frame_data.service_data.property_id:
 
                             # Yes, this is the answer to our request
-                            #_LOGGER.debug(f"recv {response}")
+                            if verbose:
+                                _LOGGER.debug(f"recv {response}")
                             return response
                         
                         else:
                             # No, not an answer to our request, continue loop for next answer (or timeout)
-                            pass
+                            if verbose:
+                                _LOGGER.debug(f"skip {response}")
 
             except asyncio.TimeoutError as te:
                 msg = f"Timeout while listening for response package from Xcom client"
