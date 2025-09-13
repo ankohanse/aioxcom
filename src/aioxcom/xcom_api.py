@@ -48,7 +48,8 @@ START_TIMEOUT = 30 # seconds
 STOP_TIMEOUT = 5
 REQ_TIMEOUT = 3
 REQ_RETRIES = 3
-REQ_BURST_SIZE = 10 # do 10 requests, then wait a second, then the next 10 requests
+REQ_BURST_PERIOD = 5 # do burst of requests for 5 seconds, then wait a second, then the next burst
+
 
 
 class XcomApiWriteException(Exception):
@@ -299,7 +300,7 @@ class XcomApiBase:
 
         # Now perform all the multi requestValues requests
         result_items: list[XcomValues] = []
-        req_idx = 0
+        burst_start = datetime.now()
 
         for req_multi in req_multis:
             try:
@@ -324,9 +325,9 @@ class XcomApiBase:
 
             # Periodically wait for a second. This will make sure we do not block Xcom-LAN with
             # too many requests at once and prevent it from uploading data to the Studer portal.
-            req_idx += 1
-            if req_idx % REQ_BURST_SIZE == 0:
+            if (datetime.now() - burst_start).total_seconds() > REQ_BURST_PERIOD:
                 await asyncio.sleep(1)
+                burst_start = datetime.now()
 
         # Next perform all the single requestValue requests
         for req_single in req_singles:
@@ -354,9 +355,9 @@ class XcomApiBase:
 
             # Periodically wait for a second. This will make sure we do not block Xcom-LAN with
             # too many requests at once and prevent it from uploading data to the Studer portal.
-            req_idx += 1
-            if req_idx % REQ_BURST_SIZE == 0:
+            if (datetime.now() - burst_start).total_seconds() > REQ_BURST_PERIOD:
                 await asyncio.sleep(1)
+                burst_start = datetime.now()
 
         # Return all reponse items as one XcomValues object
         return XcomValues(result_items)
