@@ -101,15 +101,6 @@ class XcomDeviceFamilies:
         0, 0,                  # nr for infos,  start to end
         5002,                  # nr for discovery
     )
-    BSP = XcomDeviceFamily(
-        "bsp", "bsp",
-        "BSP", 
-        600,                   # addr multicast to all devices (write only)
-        601, 601,              # addr devices,  start to end
-        6000, 6999,            # nr for params, start to end
-        7000, 7999,            # nr for infos,  start to end
-        7013,                  # nr for discovery
-    )
     BMS = XcomDeviceFamily(
         "bms", "bms",
         "Xcom-CAN BMS", 
@@ -117,7 +108,16 @@ class XcomDeviceFamilies:
         601, 601,              # addr devices,  start to end
         6000, 6999,            # nr for params, start to end
         7000, 7999,            # nr for infos,  start to end
-        7068,                  # nr for discovery
+        7054,                  # nr for discovery
+    )
+    BSP = XcomDeviceFamily(    # Place AFTER BMS; during Discovery BSP is only tested if no BMS is found
+        "bsp", "bsp",
+        "BSP", 
+        600,                   # addr multicast to all devices (write only)
+        601, 601,              # addr devices,  start to end
+        6000, 6999,            # nr for params, start to end
+        7000, 7999,            # nr for infos,  start to end
+        7034,                  # nr for discovery
     )
     VARIOTRACK = XcomDeviceFamily(
         "vt", "vt",

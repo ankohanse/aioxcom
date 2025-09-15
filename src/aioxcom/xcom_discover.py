@@ -89,6 +89,13 @@ class XcomDiscover:
 
                 device_code = family.getCode(device_addr)
 
+                # Have we already discovered a device for this address?
+                device_found = next((d for d in devices if d.addr == device_addr), None)
+                if device_found is not None:
+                    # Do not test further device addresses in this family
+                    _LOGGER.info(f"  Skip device {device_code}; already found device {device_found.code}")
+                    break
+
                 # Send the test request to the device. This will return None in case:
                 # - the device does not exist (DEVICE_NOT_FOUND)
                 # - the device does not support the param (INVALID_DATA), used to distinguish BSP from BMS
