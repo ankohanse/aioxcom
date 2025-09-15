@@ -108,7 +108,7 @@ class XcomDeviceFamilies:
         601, 601,              # addr devices,  start to end
         6000, 6999,            # nr for params, start to end
         7000, 7999,            # nr for infos,  start to end
-        7036,                  # nr for discovery
+        7013,                  # nr for discovery
     )
     BMS = XcomDeviceFamily(
         "bms", "bms",
@@ -117,7 +117,7 @@ class XcomDeviceFamilies:
         601, 601,              # addr devices,  start to end
         6000, 6999,            # nr for params, start to end
         7000, 7999,            # nr for infos,  start to end
-        7054,                  # nr for discovery
+        7068,                  # nr for discovery
     )
     VARIOTRACK = XcomDeviceFamily(
         "vt", "vt",

@@ -107,8 +107,8 @@ async def context():
         ("l1",          [191],          { "3000": XcomData.pack(1234.0, XcomFormat.FLOAT) },  ["L1"]),
         ("l1,l2,l3",    [191,192,193],  { "3000": XcomData.pack(1234.0, XcomFormat.FLOAT) },  ["L1", "L2", "L3"]),
         ("rcc",         [501],          { "5002": XcomData.pack(1234.0, XcomFormat.FLOAT) },  ["RCC"]),
-        ("bsp",         [601],          { "7036": XcomData.pack(1234.0, XcomFormat.FLOAT) },  ["BSP"]),
-        ("bms",         [601],          { "7054": XcomData.pack(1234.0, XcomFormat.FLOAT) },  ["BMS"]),
+        ("bsp",         [601],          { "7013": XcomData.pack(1234.0, XcomFormat.FLOAT) },  ["BSP"]),
+        ("bms",         [601],          { "7068": XcomData.pack(1, XcomFormat.SHORT_ENUM) },  ["BMS"]),
         ("vt1",         [301],          { "11000": XcomData.pack(1234.0, XcomFormat.FLOAT) }, ["VT1"]),
         ("vt1,vt2",     [301,302],      { "11000": XcomData.pack(1234.0, XcomFormat.FLOAT) }, ["VT1", "VT2"]),
         ("vs1",         [701],          { "15000": XcomData.pack(1234.0, XcomFormat.FLOAT) }, ["VS1"]),
@@ -178,7 +178,7 @@ async def test_discover_devices(name, rsp_dest, rsp_dict, exp_devices, request):
                             "3157": XcomData.pack(0x0706, XcomFormat.FLOAT), # fid
                         }, "XT1", "XTH", "2.3 / 4.5", "6.8.9", "09080706"),
         ("bsp ext",     [601], {
-                            "7036": XcomData.pack(1.0, XcomFormat.FLOAT),    # detect
+                            "7013": XcomData.pack(1.0, XcomFormat.FLOAT),    # detect
                             "7034": XcomData.pack(10241, XcomFormat.FLOAT),  # device_model
                             "7036": XcomData.pack(0X0102, XcomFormat.FLOAT), # hw_version
                             "7037": XcomData.pack(0X0304, XcomFormat.FLOAT), # sw_version      
@@ -186,6 +186,15 @@ async def test_discover_devices(name, rsp_dest, rsp_dict, exp_devices, request):
                             "7048": XcomData.pack(0x0708, XcomFormat.FLOAT), # fid
                             "7049": XcomData.pack(0x0901, XcomFormat.FLOAT), # fid
                         }, "BSP", None, "1.2", "3.5.6", "07080901"),
+        ("bms ext",     [601], {
+                            "7068": XcomData.pack(1, XcomFormat.SHORT_ENUM), # detect
+                            "7034": XcomData.pack(10241, XcomFormat.FLOAT),  # device_model (for bsp, not bms)
+                            "7036": XcomData.pack(0X0102, XcomFormat.FLOAT), # hw_version   (for bsp, not bms)
+                            "7037": XcomData.pack(0X0304, XcomFormat.FLOAT), # sw_version   (for bsp, not bms)    
+                            "7038": XcomData.pack(0X0506, XcomFormat.FLOAT), # sw_version   (for bsp, not bms)
+                            "7048": XcomData.pack(0x0708, XcomFormat.FLOAT), # fid          (for bsp, not bms)
+                            "7049": XcomData.pack(0x0901, XcomFormat.FLOAT), # fid          (for bsp, not bms)
+                        }, "BMS", None, None, None, None),
         ("vt1 ext",     [301], {
                             "11000": XcomData.pack(1234.0, XcomFormat.FLOAT), #detect
                             "11047": XcomData.pack(9079, XcomFormat.FLOAT),   # device_model

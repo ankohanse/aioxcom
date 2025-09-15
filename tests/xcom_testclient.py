@@ -111,7 +111,7 @@ class XcomTestClientTcp:
             try:
                 async with asyncio.timeout(timeout):
                     while True:
-                        request = await XcomPackage.parse(self._reader)
+                        request, _ = await XcomPackage.parse(self._reader)
 
                         if request is not None:
                             _LOGGER.info(f"Xcom TCP Test Client received request package {request}")

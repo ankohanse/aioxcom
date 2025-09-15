@@ -107,10 +107,10 @@ class XcomDiscover:
                         devices.append(device)
 
                     else:
-                        _LOGGER.info(f"  No device {device_code}; no value returned from Xcom client: {e}")
+                        _LOGGER.info(f"  No device {device_code}; no value returned from Xcom client")
 
                 except Exception as e:
-                    _LOGGER.info(f"  No device {device_code}; no test value returned from Xcom client: {e}")
+                    _LOGGER.info(f"  No device {device_code}; no value returned from Xcom client: {e}")
 
                     # Do not test further device addresses in this family
                     break

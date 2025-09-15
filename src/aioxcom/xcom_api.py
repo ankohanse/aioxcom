@@ -591,7 +591,7 @@ class XcomApiTcp(XcomApiBase):
             try:
                 async with asyncio.timeout(timeout):
                     while True:
-                        response = await XcomPackage.parse(self._reader, verbose=verbose)
+                        response,data = await XcomPackage.parse(self._reader, verbose=verbose)
 
                         if response.isResponse() and \
                         response.frame_data.service_id == request.frame_data.service_id and \
@@ -600,13 +600,13 @@ class XcomApiTcp(XcomApiBase):
 
                             # Yes, this is the answer to our request
                             if verbose:
-                                _LOGGER.debug(f"recv {response}")
+                                _LOGGER.debug(f"recv {len(data)} bytes ({binascii.hexlify(data).decode('ascii')}), decoded: {response}")
                             return response
                         
                         else:
                             # No, not an answer to our request, continue loop for next answer (or timeout)
                             if verbose:
-                                _LOGGER.debug(f"skip {response}")
+                                _LOGGER.debug(f"skip {len(data)} bytes ({binascii.hexlify(data).decode('ascii')}), decoded: {response}")
 
             except asyncio.TimeoutError as te:
                 msg = f"Timeout while listening for response package from Xcom client"

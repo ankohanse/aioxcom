@@ -198,23 +198,22 @@ class XcomPackage:
 
         package = XcomPackage(header, frame)
 
-        if verbose:
-            data = bytearray(b'')
-            data.extend(sb)
-            data.extend(h_raw)
-            data.extend(h_chk)
-            data.extend(f_raw)
-            data.extend(f_chk)
-            _LOGGER.debug(f"recv {len(data)} bytes ({binascii.hexlify(data).decode('ascii')}), decoded: {package}")
+        data = bytearray(b'')
+        data.extend(sb)
+        data.extend(h_raw)
+        data.extend(h_chk)
+        data.extend(f_raw)
+        data.extend(f_chk)
 
-        return package
+        return package, data
 
     @staticmethod
     async def parseBytes(buf: bytes):
         reader = asyncio.StreamReader()
         reader.feed_data(buf)
 
-        return await XcomPackage.parse(reader)
+        package, _ = await XcomPackage.parse(reader)
+        return package
     
     @staticmethod
     def genPackage(
