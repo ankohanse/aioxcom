@@ -8,8 +8,8 @@ async def test_create():
     dataset120 = await XcomDataset.create(XcomVoltage.AC120)    
     dataset240 = await XcomDataset.create(XcomVoltage.AC240)
 
-    assert len(dataset120._datapoints) == 1436
-    assert len(dataset240._datapoints) == 1436
+    assert len(dataset120._datapoints) == 1451
+    assert len(dataset240._datapoints) == 1451
 
 
 @pytest.mark.asyncio
@@ -83,7 +83,7 @@ async def test_menu():
     dataset = await XcomDataset.create(XcomVoltage.AC240)
     
     root_items = dataset.getMenuItems(0)
-    assert len(root_items) == 11
+    assert len(root_items) == 12
 
     for item in root_items:
         sub_items = dataset.getMenuItems(item.nr)

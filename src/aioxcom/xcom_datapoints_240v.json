@@ -28,6 +28,7 @@
     {   "fam": "xt",   "lvl": "Basic",   "pnr": 0,      "nr": 10,     "name": "Xtender params",   "fmt": "ONLY LEVEL",   "inc": "Menu" },
     {   "fam": "xt",   "lvl": "Info",    "pnr": 0,      "nr": 30,     "name": "Xtender infos",   "fmt": "ONLY LEVEL",   "inc": "Menu" },
     {   "fam": "rcc",  "lvl": "Basic",   "pnr": 0,      "nr": 50,     "name": "RCC params",   "fmt": "ONLY LEVEL",   "inc": "Menu" },
+    {   "fam": "rcc",  "lvl": "Info",    "pnr": 0,      "nr": 55,     "name": "RCC infos",   "fmt": "ONLY LEVEL",   "inc": "Menu" },
     {   "fam": "bsp",  "lvl": "Basic",   "pnr": 0,      "nr": 60,     "name": "BSP params",   "fmt": "ONLY LEVEL",   "inc": "Menu" },
     {   "fam": "bsp",  "lvl": "Info",    "pnr": 0,      "nr": 70,     "name": "BSP infos",   "fmt": "ONLY LEVEL",   "inc": "Menu" },
     {   "fam": "bms",  "lvl": "Basic",   "pnr": 0,      "nr": 65,     "name": "BMS params",   "fmt": "ONLY LEVEL",   "inc": "Menu" },
@@ -680,6 +681,11 @@
     {   "fam": "rcc",   "lvl": "QSP",     "pnr": 5024,   "nr": 5103,   "name": "    Activation of the watchdog hardware (deactivation restarts the Xcom   ",   "unit": "",   "def": 0,   "min": 0,   "max": 1,   "fmt": "BOOL",   "inc": 1 },
     {   "fam": "rcc",   "lvl": "QSP",     "pnr": 5024,   "nr": 5104,   "name": "    Clears the restart flag of Xcom-232i",   "unit": "",   "def": "S",   "min": "S",   "max": "S",   "fmt": "INT32",   "inc": "Signal" },
     {   "fam": "rcc",   "lvl": "QSP",     "pnr": 5094,   "nr": 5035,   "name": "  Erase messages",   "unit": "",   "def": "S",   "min": "S",   "max": "S",   "fmt": "INT32",   "inc": "Signal" },
+
+    { "_rem": "###"},
+    { "_rem": "### RCC infos"},
+    { "_rem": "###"},
+    {   "fam": "rcc",   "lvl": "V.O.",    "pnr": 55,     "nr": 5012,   "name": "User level",   "unit": "",   "def": 16,   "min": 0,   "max": 111,   "fmt": "LONG ENUM",   "inc": "", "opt": {"0":"VIEW ONLY", "16":"BASIC", "32":"EXPERT", "48":"INSTALLER", "64":"QSP"} },
 
     { "_rem": "###"},
     { "_rem": "### BSP params"},
