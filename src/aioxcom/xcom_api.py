@@ -8,6 +8,7 @@ import socket
 from datetime import datetime, timedelta
 from typing import Iterable
 
+
 from .xcom_const import (
     ScomAddress,
     XcomLevel,
@@ -27,6 +28,7 @@ from .xcom_protocol import (
 )
 from .xcom_data import (
     XcomData,
+    XcomDataMessageRsp,
     MULTI_INFO_REQ_MAX,
 )
 from .xcom_values import (
@@ -39,6 +41,10 @@ from .xcom_datapoints import (
 from .xcom_families import (
     XcomDeviceFamilies
 )
+from .xcom_messages import (
+    XcomMessage,
+)
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -400,6 +406,50 @@ class XcomApiBase:
         
         return False
     
+
+    async def requestMessage(self, index:int = 0, retries = None, timeout = None, verbose=False) -> XcomMessage:
+        """
+        Request a Message from the RCC.
+        Reading a message with index 0 will return the last saved message in the flash memory of 
+        the Xcom-232i and will also return the the number of remaining messages.
+        A side effect of reading a message with index 0 is that it will erase the flag informing 
+        that there are new messages.
+
+        Reading a message with an index above 0 will return the message saved with that index.
+
+        Note: this requires at least firmware version 1.5.0 on your Xcom-232i/Xcom-LAN.
+              On older versions it results in a 'Service not supported' response from the Xcom client
+        
+        Returns None if not connected, otherwise returns the requested value
+        Throws
+            XcomApiWriteException
+            XcomApiReadException
+            XcomApiTimeoutException
+            XcomApiResponseIsError
+        """
+
+        # Compose the request and send it
+        request: XcomPackage = XcomPackage.genPackage(
+            service_id = ScomService.READ,
+            object_type = ScomObjType.MESSAGE,
+            object_id = index,
+            property_id = ScomQspId.NONE,
+            property_data = XcomData.NONE,
+            dst_addr = ScomAddress.RCC,
+        )
+
+        response = await self._sendRequest(request, retries=retries, timeout=timeout, verbose=verbose)
+        if response is not None:
+            # Unpack the response value
+            try:
+                # Unpack the response value
+                rsp_data = XcomDataMessageRsp.unpack(response.frame_data.service_data.property_data)
+                return await XcomMessage.from_rsp(rsp_data)
+
+            except Exception as e:
+                msg = f"Failed to unpack response package for message request, data={response.frame_data.service_data.property_data.hex()}: {e}"
+                raise XcomApiUnpackException(msg) from None
+                        
 
     async def _sendRequest(self, request: XcomPackage, retries = None, timeout = None, verbose=False):
     

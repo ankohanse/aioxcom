@@ -117,13 +117,6 @@ async def main():
         if await api.updateValue(param_1107, value, "XT1"):
             logger.info(f"XT1 {param_1107.nr} updated to {value} {param_1107.unit} ({param_1107.name})")
 
-        # Retrieve unique guid for this installation
-        logger.info(f"")
-        logger.info(f"Retrieve unique guid of this installation")
-
-        value = await api.requestGuid()
-        logger.info(f"Installation Guid: {value}")
-
     except Exception as e:
         logger.info(f"Unexpected exception: {e}")
 

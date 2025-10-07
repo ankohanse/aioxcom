@@ -1,5 +1,6 @@
 import asyncio
 import copy
+from datetime import datetime
 import pytest
 import pytest_asyncio
 
@@ -7,6 +8,7 @@ from aioxcom import XcomApiTcp, XcomDataset, XcomData, XcomPackage
 from aioxcom import XcomApiTimeoutException, XcomApiResponseIsError, XcomParamException
 from aioxcom import XcomValues, XcomValuesItem
 from aioxcom import XcomVoltage, XcomFormat, XcomAggregationType, ScomService, ScomObjType, ScomObjId, ScomQspId, ScomAddress, ScomErrorCode
+from aioxcom import XcomDataMessageRsp
 from . import XcomTestClientTcp
 
 
@@ -561,4 +563,80 @@ async def test_requestGuid(name, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj
     else:
         with pytest.raises(exp_except):
             await task_server
+
+
+@pytest_asyncio.fixture
+async def data_message():
+    rsp_data = XcomDataMessageRsp(10, 1, 101, datetime.now().timestamp(), 1234)
+    yield rsp_data
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("context", "unused_tcp_port", "data_message")
+@pytest.mark.parametrize(
+    "name, test_nr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except",
+    [
+        ("request msg ok",      1, ScomService.READ, ScomObjType.MESSAGE, 1, ScomQspId.NONE, 0x02, "data_message", None, None),
+        ("request msg err",     1, ScomService.READ, ScomObjType.MESSAGE, 1, ScomQspId.NONE, 0x03, XcomData.pack(ScomErrorCode.READ_PROPERTY_FAILED, XcomFormat.ERROR), None, XcomApiResponseIsError),
+        ("request msg timeout", 1, ScomService.READ, ScomObjType.MESSAGE, 1, ScomQspId.NONE, 0x00, "data_message", None, XcomApiTimeoutException),
+    ]
+)
+async def test_requestMessage(name, test_nr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except, request):
+    context = request.getfixturevalue("context")
+    port    = request.getfixturevalue("unused_tcp_port")
+
+    if isinstance(rsp_data, str):
+        rsp_data = request.getfixturevalue(rsp_data)
+        rsp_data = rsp_data.pack()
+
+    # The order of start is important, first server, then client.
+    await context.start_server(port)
+    await context.start_client(port)
+
+    await context.server._waitConnected(5)
+    assert context.server.connected == True
+    assert context.client.connected == True
+
+    # Helper function for client to handle a request and submit a response
+    async def clientHandler():
+    
+        # Receive the request from the server
+        req: XcomPackage = await context.client.receivePackage()
+
+        # Make a deep copy of the request and turn it into a response
+        rsp = copy.deepcopy(req)
+        rsp.frame_data.service_flags = rsp_flags
+        rsp.frame_data.service_data.property_data = rsp_data
+        rsp.header.data_length = len(rsp.frame_data)
+
+        # Send the response back to the server
+        await context.client.sendPackage(rsp)
+        return req,rsp
+
+    # Start 2 parallel tasks, for server and for client
+    task_server = asyncio.create_task(context.server.requestMessage(test_nr, retries=1, timeout=5))
+    task_client = asyncio.create_task(clientHandler())
+
+    # Wait for client to finish and check the received request
+    req, rsp = await task_client
+
+    assert req.header.dst_addr == ScomAddress.RCC
+    assert req.frame_data.service_id == exp_svc_id
+    assert req.frame_data.service_data.object_type == exp_obj_type
+    assert req.frame_data.service_data.object_id == exp_obj_id
+    assert req.frame_data.service_data.property_id == exp_prop_id
+
+    # Wait for server to finish and check the handling of the received response
+    if exp_except == None:
+        msg = await task_server
+        assert msg.message_total == 10
+        assert msg.message_number == 1
+        assert msg.source_address == 101
+        assert msg.timestamp != 0
+        assert msg.value == 1234
+        assert msg.message_string is not None
+    else:
+        with pytest.raises(exp_except):
+            await task_server
+
 

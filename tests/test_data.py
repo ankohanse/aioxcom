@@ -1,9 +1,9 @@
+from datetime import datetime
 import math
 import pytest
 import pytest_asyncio
-from aioxcom import XcomData, XcomDataMultiInfoReq, XcomDataMultiInfoReqItem, XcomDataMultiInfoRsp, XcomDataMultiInfoRspItem
-from aioxcom import XcomFormat, XcomVoltage, XcomAggregationType
-from aioxcom import XcomDataset, XcomDatapoint
+from aioxcom import XcomData, XcomDataMultiInfoReq, XcomDataMultiInfoReqItem, XcomDataMultiInfoRsp, XcomDataMultiInfoRspItem, XcomDataMessageRsp
+from aioxcom import XcomFormat, XcomAggregationType
 
 
 @pytest_asyncio.fixture
@@ -99,3 +99,29 @@ def test_data_multiinfo_rsp(request):
 
         assert clone_item.aggregation_type == rsp_item.aggregation_type
         assert clone_item.data == pytest.approx(rsp_item.data, abs=0.01) # carefull with comparing floats
+
+
+def test_data_message_rsp(request):
+    # test pack response
+    rsp = XcomDataMessageRsp(
+        message_total = 10,
+        message_number = 1,
+        source_address = 101,
+        timestamp = datetime.now().timestamp(),
+        value = 1234
+    )
+    buf = rsp.pack()
+
+    assert buf is not None
+    assert len(buf) == 18
+
+    # test unpack response
+    clone = XcomDataMessageRsp.unpack(buf)
+
+    assert clone is not None
+    assert type(clone) == type(rsp)
+    assert clone.message_total == rsp.message_total
+    assert clone.message_number == rsp.message_number
+    assert clone.source_address == rsp.source_address
+    assert clone.timestamp == rsp.timestamp
+    assert clone.value == rsp.value

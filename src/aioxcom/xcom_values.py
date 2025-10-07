@@ -136,3 +136,4 @@ class XcomValues():
             items = [XcomDataMultiInfoRspItem(i.datapoint.nr, i.aggregation_type, float(i.value)) for i in self.items]
         )
         return rsp.pack()
+

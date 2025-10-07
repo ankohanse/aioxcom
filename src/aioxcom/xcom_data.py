@@ -18,6 +18,7 @@ from typing import Any, Iterable
 from .xcom_const import (
     XcomFormat,
     XcomAggregationType,
+    XcomParamException,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -211,47 +212,49 @@ class XcomDataMultiInfoRsp:
 
 
 class XcomDataMessageRsp:
-    msg_total: int      # 4 bytes
-    msg_type: int       # 2 bytes
-    src: int            # 4 bytes
-    timestamp: int      # 4 bytes
-    value: bytes        # 4 bytes
+    message_total: int      # 4 bytes
+    message_number: int     # 2 bytes
+    source_address: int     # 4 bytes
+    timestamp: int          # 4 bytes
+    value: int              # 4 bytes
+
+    def __init__(self, message_total, message_number, source_address, timestamp, value):
+        self.message_total = message_total
+        self.message_number = message_number
+        self.source_address = source_address
+        self.timestamp = int(timestamp)
+        self.value = int(value)
 
     @staticmethod
-    def parse(f: BufferedReader):
+    def unpack(buf: bytes) -> 'XcomDataMessageRsp':
+        f = BytesIO(buf)
+        
         msg_total = readUInt32(f)
-        msg_type= readUInt16(f)
+        msg_number= readUInt16(f)
         src = readUInt32(f)
         timestamp = readUInt32(f)
-        value = readBytes(f, 4)
+        value = readUInt32(f)
 
-        return XcomDataMessageRsp(msg_total, msg_type, src, timestamp, value)
-    
-    @staticmethod
-    def parseBytes(buf: bytes):
-        return XcomDataMessageRsp.parse(BytesIO(buf))  
-        
-    def __init__(self, msg_total, msg_type, src, timestamp, value):
-        self.msg_total = msg_total
-        self.msg_type = msg_type
-        self.src = src
-        self.timestamp = timestamp
-        self.value = value
+        return XcomDataMessageRsp(msg_total, msg_number, src, timestamp, value)
 
-    def __len__(self) -> int:
-        return 2*4 + len(self.items)*(2+1+4)
+    def pack(self) -> bytes:
+        f = BytesIO()
+        writeUInt32(f, self.message_total)
+        writeUInt16(f, self.message_number)
+        writeUInt32(f, self.source_address)
+        writeUInt32(f, self.timestamp)
+        writeUInt32(f, self.value)
 
-    def __str__(self) -> str:
-        return f"(flags={self.flags}, datetime={self.datetime}, len={len(self.items)})"
+        return f.getvalue()
 
 
 ##
 
 def readFloat(f: BufferedReader) -> float:
-    return float.from_bytes(f.read(4), byteorder="little", signed=True)
+    return struct.unpack('<f', f.read(4))
 
 def writeFloat(f: BufferedReader, value: float) -> int:
-    return f.write(value.to_bytes(4, byteorder="little", signed=True))
+    return f.write(struct.pack("<f", float(value)))
 
 
 def readSInt32(f: BufferedReader) -> int:

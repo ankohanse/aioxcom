@@ -1,7 +1,8 @@
+from datetime import datetime
 import math
 import pytest
 import pytest_asyncio
-from aioxcom import XcomPackage, XcomDataset, XcomData, XcomDataMultiInfoReq, XcomDataMultiInfoReqItem, XcomDataMultiInfoRsp, XcomDataMultiInfoRspItem
+from aioxcom import XcomPackage, XcomDataset, XcomData, XcomDataMultiInfoReq, XcomDataMultiInfoReqItem, XcomDataMultiInfoRsp, XcomDataMultiInfoRspItem, XcomDataMessageRsp
 from aioxcom import XcomFormat, XcomVoltage, XcomAggregationType, ScomService, ScomObjType, ScomQspId, ScomAddress
 
 
@@ -19,7 +20,7 @@ async def package_read_info():
         object_type = ScomObjType.INFO,
         object_id = 0x01020304,
         property_id = ScomQspId.VALUE,
-        property_data = b'',
+        property_data = XcomData.NONE,
         src_addr = ScomAddress.SOURCE,
         dst_addr = 101,
     )
@@ -31,7 +32,7 @@ async def package_read_param():
         object_type = ScomObjType.PARAMETER,
         object_id = 0x01020304,
         property_id = ScomQspId.UNSAVED_VALUE,
-        property_data = b'',
+        property_data = XcomData.NONE,
         src_addr = ScomAddress.SOURCE,
         dst_addr = 101,
     )
@@ -60,17 +61,30 @@ async def package_read_multiinfo(data_multi_info):
         dst_addr = 501,
     )
 
+@pytest_asyncio.fixture
+async def package_read_message():
+    yield XcomPackage.genPackage(
+        service_id = ScomService.READ,
+        object_type = ScomObjType.MESSAGE,
+        object_id = 0x01,
+        property_id = ScomQspId.NONE,
+        property_data = XcomData.NONE,
+        src_addr = ScomAddress.SOURCE,
+        dst_addr = 501,
+    )
+
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("package_read_info", "package_read_param", "package_write_param", "package_read_multiinfo", "data_multi_info")
+@pytest.mark.usefixtures("package_read_info", "package_read_param", "package_write_param", "package_read_multiinfo", "data_multi_info", "package_read_message")
 @pytest.mark.parametrize(
     "fixture, exp_src_addr, exp_dst_addr, exp_svc_id, exp_svc_flags, exp_obj_type, exp_obj_id, exp_prop_id, exp_prop_data",
     [
-        ("package_read_info",      ScomAddress.SOURCE, 101, ScomService.READ,  0x00, ScomObjType.INFO,       0x01020304, ScomQspId.VALUE,         b''),
-        ("package_read_param",     ScomAddress.SOURCE, 101, ScomService.READ,  0x00, ScomObjType.PARAMETER,  0x01020304, ScomQspId.UNSAVED_VALUE, b''),
+        ("package_read_info",      ScomAddress.SOURCE, 101, ScomService.READ,  0x00, ScomObjType.INFO,       0x01020304, ScomQspId.VALUE,         XcomData.NONE),
+        ("package_read_param",     ScomAddress.SOURCE, 101, ScomService.READ,  0x00, ScomObjType.PARAMETER,  0x01020304, ScomQspId.UNSAVED_VALUE, XcomData.NONE),
         ("package_write_param",    ScomAddress.SOURCE, 101, ScomService.WRITE, 0x00, ScomObjType.PARAMETER,  0x01020304, ScomQspId.UNSAVED_VALUE, b'0A0B0C0D'),
-        ("package_read_multiinfo", ScomAddress.SOURCE, 501, ScomService.READ,  0x00, ScomObjType.MULTI_INFO, 0x01,       ScomQspId.NONE,          "data_multi_info.pack()")
+        ("package_read_multiinfo", ScomAddress.SOURCE, 501, ScomService.READ,  0x00, ScomObjType.MULTI_INFO, 0x01,       ScomQspId.NONE,          "data_multi_info.pack()"),
+        ("package_read_message",   ScomAddress.SOURCE, 501, ScomService.READ,  0x00, ScomObjType.MESSAGE,    0x01,       ScomQspId.NONE,          XcomData.NONE),
     ]
 )
 async def test_package_props(fixture, exp_src_addr, exp_dst_addr, exp_svc_id, exp_svc_flags, exp_obj_type, exp_obj_id, exp_prop_id, exp_prop_data, request):
@@ -109,7 +123,7 @@ async def test_package_props(fixture, exp_src_addr, exp_dst_addr, exp_svc_id, ex
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("package_read_info", "package_read_param", "package_write_param", "package_read_multiinfo")
+@pytest.mark.usefixtures("package_read_info", "package_read_param", "package_write_param", "package_read_multiinfo", "package_read_message")
 @pytest.mark.parametrize(
     "name, fixture, modify_flags, modify_data, expected_isResponse, expected_isError, expected_getError",
     [
@@ -129,6 +143,10 @@ async def test_package_props(fixture, exp_src_addr, exp_dst_addr, exp_svc_id, ex
         ("read multi-info rsp_ok",  "package_read_multiinfo", 0x02, b'',         True,  False, None),
         ("read multi-info rsp_err", "package_read_multiinfo", 0x03, b'\x2A\x00', True,  True,  "READ_PROPERTY_FAILED"),
         ("read multi-info rsp_unk", "package_read_multiinfo", 0x03, b'\xDC\xFE', True,  True,  "unknown error 'fedc'"),
+        ("read message req",        "package_read_message",   0x00, b'',         False, False, None),
+        ("read message rsp_ok",     "package_read_message",   0x02, b'',         True,  False, None),
+        ("read message rsp_err",    "package_read_message",   0x03, b'\x2A\x00', True,  True,  "READ_PROPERTY_FAILED"),
+        ("read message rsp_unk",    "package_read_message",   0x03, b'\xDC\xFE', True,  True,  "unknown error 'fedc'"),
     ]
 )
 async def test_package_flags(name, fixture, modify_flags, modify_data, expected_isResponse, expected_isError, expected_getError, request):
