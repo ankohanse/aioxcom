@@ -1,1 +1,2 @@
-from .xcom_testclient import XcomTestClientTcp
+from .xcom_testclient_tcp import XcomTestClientTcp
+from .xcom_testclient_serial import XcomTestClientSerial

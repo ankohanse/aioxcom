@@ -10,7 +10,7 @@ import struct
 from dataclasses import dataclass
 from getmac import get_mac_address
 
-from .xcom_api import (
+from .xcom_api_base import (
     XcomApiBase,
 )
 from .xcom_datapoints import (
