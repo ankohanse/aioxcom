@@ -1,5 +1,6 @@
 from .xcom_const import XcomVoltage, XcomLevel, XcomFormat, XcomCategory, XcomAggregationType, XcomParamException
-from .xcom_api_lan import XcomApiTcp
+from .xcom_api_tcp import XcomApiTcp
+from .xcom_api_udp import XcomApiUdp
 from .xcom_api_serial import XcomApiSerial
 from .xcom_api_base import XcomApiWriteException, XcomApiReadException, XcomApiTimeoutException, XcomApiUnpackException, XcomApiResponseIsError
 from .xcom_messages import XcomMessage, XcomMessageUnknownException

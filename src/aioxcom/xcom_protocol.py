@@ -208,11 +208,11 @@ class XcomPackage:
         return package, data
 
     @staticmethod
-    async def parseBytes(buf: bytes):
+    async def parseBytes(buf: bytes, verbose=False):
         reader = asyncio.StreamReader()
         reader.feed_data(buf)
 
-        package, _ = await XcomPackage.parse(reader)
+        package, _ = await XcomPackage.parse(reader, verbose)
         return package
     
     @staticmethod

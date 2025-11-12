@@ -79,7 +79,6 @@ class XcomApiBase:
         MOXA is connecting to the TCP Server we are creating here.
         Once it is connected we can send package requests.
         """
-        self._started = False
         self._connected = False
         self._remote_ip = None
         self._request_id = 0
@@ -483,7 +482,7 @@ class XcomApiBase:
             raise last_exception from None
 
 
-    async def _sendPackage(self, request: XcomPackage, timeout=REQ_TIMEOUT) -> XcomPackage | None:
+    async def _sendPackage(self, request: XcomPackage, timeout=REQ_TIMEOUT, verbose=False) -> XcomPackage | None:
         """Implemented in derived classes"""
         raise NotImplementedError()
     

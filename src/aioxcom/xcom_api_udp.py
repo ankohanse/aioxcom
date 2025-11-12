@@ -1,6 +1,7 @@
 """xcom_api.py: communication api to Studer Xcom via LAN."""
 
 import asyncio
+import asyncudp
 import binascii
 import logging
 import socket
@@ -60,49 +61,43 @@ from .xcom_messages import (
 _LOGGER = logging.getLogger(__name__)
 
 
-DEFAULT_PORT = 4001
+DEFAULT_LOCAL_PORT = 4001
+DEFAULT_REMOTE_PORT = 4001
 
 
 ##
-## Class implementing Xcom-LAN TCP network protocol
+## Class implementing Xcom-LAN UDP network protocol
 ##
-class XcomApiTcp(XcomApiBase):
+class XcomApiUdp(XcomApiBase):
 
-    def __init__(self, port=DEFAULT_PORT):
+    def __init__(self, remote_ip: str, remote_port=DEFAULT_REMOTE_PORT, local_port=DEFAULT_LOCAL_PORT):
         """
-        MOXA is connecting to the TCP Server we are creating here.
-        Once it is connected we can send package requests.
+        We connect to the Moxa using the Udp server we are creating here.
+        Once it is started we can send package requests. 
         """
         super().__init__()
 
-        self.localPort = port
-        self._server = None
-        self._reader = None
-        self._writer = None
-        self._started = False
+        self._remote_ip = remote_ip
+        self._remote_port = remote_port
+        self._local_port = local_port
+        self._socket = None
         self._connected = False
-        self._remote_ip = None
 
         self._sendPackageLock = asyncio.Lock() # to make sure _sendPackage is never called concurrently
 
 
-    async def start(self, timeout=START_TIMEOUT, wait_for_connect=True) -> bool:
+    async def start(self, timeout=START_TIMEOUT) -> bool:
         """
         Start the Xcom Server and listening to the Xcom client.
         """
-        if not self._started:
-            _LOGGER.info(f"Xcom TCP server start listening on port {self.localPort}")
+        if not self._connected:
+            _LOGGER.info(f"Xcom UDP server start listening on port {self._local_port}")
 
-            self._server = await asyncio.start_server(self._client_connected_callback, "0.0.0.0", self.localPort, limit=1000, family=socket.AF_INET)
-            self._server._start_serving()
-            self._started = True
+            self._socket = await asyncudp.create_socket(local_addr=('0.0.0.0', self._local_port), packets_queue_max_size=100)
+            self._connected = True
         else:
-            _LOGGER.info(f"Xcom TCP server already listening on port {self.localPort}")
+            _LOGGER.info(f"Xcom UDP server already listening on port {self._local_port}")
 
-        if wait_for_connect:
-            _LOGGER.info("Waiting for Xcom TCP client to connect...")
-            return await self._waitConnected(timeout)
-        
         return True
 
 
@@ -110,46 +105,20 @@ class XcomApiTcp(XcomApiBase):
         """
         Stop listening to the the Xcom Client and stop the Xcom Server.
         """
-        _LOGGER.info(f"Stopping Xcom TCP server")
+        _LOGGER.info(f"Stopping Xcom UDP server")
         try:
             self._connected = False
 
             # Close the writer; we do not need to close the reader
-            if self._writer:
-                self._writer.close()
-                await self._writer.wait_closed()
-    
+            if self._socket:
+                self._socket.close()
+                
         except Exception as e:
-            _LOGGER.warning(f"Exception during closing of Xcom writer: {e}")
+            _LOGGER.warning(f"Exception during closing of Xcom socket: {e}")
 
-        # Close the server
-        try:
-            async with asyncio.timeout(STOP_TIMEOUT):
-                if self._server:
-                    self._server.close()
-                    await self._server.wait_closed()
-    
-        except asyncio.TimeoutError:
-            pass
-        except Exception as e:
-            _LOGGER.warning(f"Exception during closing of Xcom server: {e}")
-
-        self._started = False
-        _LOGGER.info(f"Stopped Xcom TCP server")
-    
-
-    async def _client_connected_callback(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        """
-        Callback called once the Xcom Client connects to our Server
-        """
-        self._reader: asyncio.StreamReader = reader
-        self._writer: asyncio.StreamWriter = writer
-        self._connected = True
-
-        # Gather some info about remote server
-        (self._remote_ip,_) = self._writer.get_extra_info("peername")
-
-        _LOGGER.info(f"Connected to Xcom client '{self._remote_ip}'")
+        self._connected = False
+        self._socket = None
+        _LOGGER.info(f"Stopped Xcom UDP server")
 
 
     async def _sendPackage(self, request: XcomPackage, timeout=REQ_TIMEOUT, verbose=False) -> XcomPackage | None:
@@ -171,8 +140,8 @@ class XcomApiTcp(XcomApiBase):
                 if verbose:
                     _LOGGER.debug(f"send {len(data)} bytes ({binascii.hexlify(data).decode('ascii')}), decoded: {request}")
 
-                self._writer.write(data)
-
+                self._socket.sendto(data, addr=(self._remote_ip, self._remote_port) )
+                
             except Exception as e:
                 msg = f"Exception while sending request package to Xcom client: {e}"
                 raise XcomApiWriteException(msg) from None
@@ -181,7 +150,8 @@ class XcomApiTcp(XcomApiBase):
             try:
                 async with asyncio.timeout(timeout):
                     while True:
-                        response,data = await XcomPackage.parse(self._reader, verbose=verbose)
+                        data,addr = await self._socket.recvfrom()
+                        response = await XcomPackage.parseBytes(data, verbose)
 
                         if response.isResponse() and \
                         response.frame_data.service_id == request.frame_data.service_id and \
@@ -190,7 +160,7 @@ class XcomApiTcp(XcomApiBase):
 
                             # Yes, this is the answer to our request
                             if verbose:
-                                _LOGGER.debug(f"recv {len(data)} bytes ({binascii.hexlify(data).decode('ascii')}), decoded: {response}")
+                                _LOGGER.debug(f"recv {len(data)} bytes ({binascii.hexlify(data).decode('ascii')}) from {addr}, decoded: {response}")
                             return response
                         
                         else:
@@ -207,41 +177,3 @@ class XcomApiTcp(XcomApiBase):
                 raise XcomApiReadException() from None
 
 
-##
-## Class implementing Xcom-LAN UDP network protocol
-##
-class XcomApiUdp(XcomApiBase):
-
-    def __init__(self, port=DEFAULT_PORT):
-        """
-        MOXA is connecting to the TCP Server we are creating here.
-        Once it is connected we can send package requests.
-        """
-        super().__init__()
-
-        raise NotImplementedError()
-
-
-    async def start(self, timeout=START_TIMEOUT) -> bool:
-        """
-        Start the Xcom Server and listening to the Xcom client.
-        """
-        raise NotImplementedError()
-
-
-    async def stop(self):
-        """
-        Stop listening to the the Xcom Client and stop the Xcom Server.
-        """
-        raise NotImplementedError()
-
-
-    async def _sendPackage(self, request: XcomPackage, timeout=REQ_TIMEOUT) -> XcomPackage | None:
-        """
-        Send an Xcom package from Server to Client and wait for the response (or timeout).
-        Throws:
-            XcomApiWriteException
-            XcomApiReadException
-            XcomApiTimeoutException
-        """
-        raise NotImplementedError()

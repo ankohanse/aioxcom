@@ -4,44 +4,37 @@ from datetime import datetime
 import pytest
 import pytest_asyncio
 
-from aioxcom import XcomApiSerial, XcomDataset, XcomData, XcomPackage
+from aioxcom import XcomApiUdp, XcomDataset, XcomData, XcomPackage
 from aioxcom import XcomApiTimeoutException, XcomApiResponseIsError, XcomParamException
 from aioxcom import XcomValues, XcomValuesItem
 from aioxcom import XcomVoltage, XcomFormat, XcomAggregationType, ScomService, ScomObjType, ScomObjId, ScomQspId, ScomAddress, ScomErrorCode
 from aioxcom import XcomDataMessageRsp
-from . import XcomTestClientSerial
+from . import XcomTestClientUdp
 
-
-###
-### Test assumes that two serial ports have been linked, i.e. via Virtual Serial Port Driver
-###
-SERVER_PORT = 'COM2'
-CLIENT_PORT = 'COM3'
 
 class TestContext:
     __test__ = False  # Prevent pytest from collecting this class
 
-    def __init__(self, loop):
+    def __init__(self):
         self.server = None
         self.client = None
-        self._loop = loop
 
-    async def start_server(self):
+    async def start_server(self, remote_ip, remote_port, local_port):
         if not self.server:
-            self.server = XcomApiSerial(SERVER_PORT)
+            self.server = XcomApiUdp(remote_ip, remote_port, local_port)
 
-        await self.server.start(loop=self._loop)
+        await self.server.start()
 
     async def stop_server(self):
         if self.server:
             await self.server.stop()
         self.server = None
 
-    async def start_client(self):
+    async def start_client(self, remote_ip, remote_port, local_port):
         if not self.client:
-            self.client = XcomTestClientSerial(CLIENT_PORT)
+            self.client = XcomTestClientUdp(remote_ip, remote_port, local_port)
 
-        await self.client.start(loop=self._loop)
+        await self.client.start()
 
     async def stop_client(self):
         if self.client:
@@ -49,10 +42,10 @@ class TestContext:
         self.client = None
 
 
-@pytest_asyncio.fixture()
-async def context(event_loop):
+@pytest_asyncio.fixture
+async def context():
     # Prepare
-    ctx = TestContext(event_loop)
+    ctx = TestContext()
 
     # pass objects to tests
     yield ctx
@@ -61,52 +54,48 @@ async def context(event_loop):
     await ctx.stop_client()
     await ctx.stop_server()
 
-    event_loop.close()
-
-    # Wait a bit until the next test, Windows Virtual Port Driver does not like to be rushed...
-    await asyncio.sleep(1)
-
-
-@pytest.fixture(scope="module")
-def event_loop():
-    loop = asyncio.get_event_loop()
-    yield loop
-
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("context")
+@pytest.mark.usefixtures("context", "unused_udp_port_factory")
 @pytest.mark.parametrize(
-    "name, start_server, start_client, wait_server, exp_server_conn, exp_client_conn",
+    "name, start_server, start_client, wait_server, exp_server_conn, exp_client_conn, exp_server_ip, exp_client_ip",
     [
-        ("connect no start", False, False, False, False, False),
-        ("connect timeout",  True,  False, True,  True,  False),
-        ("connect ok",       True,  True,  True,  True,  True),
+        ("connect no start", False, False, False, False, False, None, None),
+        ("connect timeout",  True,  False, True,  True,  False, None, None),
+        ("connect ok",       True,  True,  True,  True,  True,  "127.0.0.1", "127.0.0.1"),
     ]
 )
-async def test_connect(name, start_server, start_client, wait_server, exp_server_conn, exp_client_conn, request):
+async def test_connect(name, start_server, start_client, wait_server, exp_server_conn, exp_client_conn, exp_server_ip, exp_client_ip, request):
 
     context = request.getfixturevalue("context")
-
+    port_factory = request.getfixturevalue("unused_udp_port_factory")
+    server_port    = port_factory()
+    client_port    = port_factory()
+    
     assert context.server is None
     assert context.client is None
 
     if start_server:
-        await context.start_server()
+        await context.start_server(remote_ip="127.0.0.1", remote_port=client_port, local_port=server_port)
         assert context.server is not None
 
     if start_client:
-        await context.start_client()
+        await context.start_client(remote_ip=None, remote_port=None, local_port=client_port)
         assert context.client is not None
 
     if wait_server:
         await context.server._waitConnected(5)
+        assert context.server is not None
 
     assert context.server is None or context.server.connected == exp_server_conn
     assert context.client is None or context.client.connected == exp_client_conn
 
+    #assert context.server is None or context.server.remote_ip == exp_server_ip
+    #assert context.client is None or context.client.remote_ip == exp_client_ip
+
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("context")
+@pytest.mark.usefixtures("context", "unused_udp_port_factory")
 @pytest.mark.parametrize(
     "name, test_nr, test_dest, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except",
     [
@@ -119,10 +108,13 @@ async def test_connect(name, start_server, start_client, wait_server, exp_server
 )
 async def test_requestValue(name, test_nr, test_dest, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except, request):
     context = request.getfixturevalue("context")
+    port_factory = request.getfixturevalue("unused_udp_port_factory")
+    server_port    = port_factory()
+    client_port    = port_factory()
 
     # The order of start is important, first server, then client.
-    await context.start_server()
-    await context.start_client()
+    await context.start_server(remote_ip="127.0.0.1", remote_port=client_port, local_port=server_port)
+    await context.start_client(remote_ip=None, remote_port=None, local_port=client_port)
 
     await context.server._waitConnected(5)
     assert context.server.connected == True
@@ -170,7 +162,7 @@ async def test_requestValue(name, test_nr, test_dest, exp_dst_addr, exp_svc_id, 
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("context")
+@pytest.mark.usefixtures("context", "unused_udp_port_factory")
 @pytest.mark.parametrize(
     "name, test_nr, test_dest, test_value_update, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except",
     [
@@ -182,10 +174,13 @@ async def test_requestValue(name, test_nr, test_dest, exp_dst_addr, exp_svc_id, 
 )
 async def test_updateValue(name, test_nr, test_dest, test_value_update, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except, request):
     context = request.getfixturevalue("context")
+    port_factory = request.getfixturevalue("unused_udp_port_factory")
+    server_port    = port_factory()
+    client_port    = port_factory()
 
     # The order of start is important, first server, then client.
-    await context.start_server()
-    await context.start_client()
+    await context.start_server(remote_ip="127.0.0.1", remote_port=client_port, local_port=server_port)
+    await context.start_client(remote_ip=None, remote_port=None, local_port=client_port)
 
     await context.server._waitConnected(5)
     assert context.server.connected == True
@@ -334,7 +329,7 @@ async def data_infos_params_aggr(dataset):
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("context", "dataset", "data_infos_dev", "data_infos_aggr", "data_infos_params_dev", "data_infos_params_aggr")
+@pytest.mark.usefixtures("context", "unused_udp_port_factory", "dataset", "data_infos_dev", "data_infos_aggr", "data_infos_params_dev", "data_infos_params_aggr")
 @pytest.mark.parametrize(
     "name, values_fixture, run_client, exp_src_addr, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, exp_except",
     [
@@ -350,10 +345,13 @@ async def data_infos_params_aggr(dataset):
 )
 async def test_requestInfos(name, values_fixture, run_client, exp_src_addr, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, exp_except, request):
     context = request.getfixturevalue("context")
+    port_factory = request.getfixturevalue("unused_udp_port_factory")
+    server_port    = port_factory()
+    client_port    = port_factory()
 
     # The order of start is important, first server, then client.
-    await context.start_server()
-    await context.start_client()
+    await context.start_server(remote_ip="127.0.0.1", remote_port=client_port, local_port=server_port)
+    await context.start_client(remote_ip=None, remote_port=None, local_port=client_port)
 
     await context.server._waitConnected(5)
     assert context.server.connected == True
@@ -422,7 +420,7 @@ async def test_requestInfos(name, values_fixture, run_client, exp_src_addr, exp_
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("context", "dataset", "data_infos_dev", "data_infos_aggr", "data_infos_params_dev", "data_infos_params_aggr")
+@pytest.mark.usefixtures("context", "unused_udp_port_factory", "dataset", "data_infos_dev", "data_infos_aggr", "data_infos_params_dev", "data_infos_params_aggr")
 @pytest.mark.parametrize(
     "name, values_fixture, run_client, loops_client, rsp_flags, exp_value, exp_error, exp_except",
     [
@@ -436,10 +434,13 @@ async def test_requestInfos(name, values_fixture, run_client, exp_src_addr, exp_
 )
 async def test_requestValues(name, values_fixture, run_client, loops_client, rsp_flags, exp_value, exp_error, exp_except, request):
     context = request.getfixturevalue("context")
+    port_factory = request.getfixturevalue("unused_udp_port_factory")
+    server_port    = port_factory()
+    client_port    = port_factory()
 
     # The order of start is important, first server, then client.
-    await context.start_server()
-    await context.start_client()
+    await context.start_server(remote_ip="127.0.0.1", remote_port=client_port, local_port=server_port)
+    await context.start_client(remote_ip=None, remote_port=None, local_port=client_port)
 
     await context.server._waitConnected(5)
     assert context.server.connected == True
@@ -510,7 +511,7 @@ async def test_requestValues(name, values_fixture, run_client, loops_client, rsp
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("context")
+@pytest.mark.usefixtures("context", "unused_udp_port_factory")
 @pytest.mark.parametrize(
     "name, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except",
     [
@@ -521,10 +522,13 @@ async def test_requestValues(name, values_fixture, run_client, loops_client, rsp
 )
 async def test_requestGuid(name, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except, request):
     context = request.getfixturevalue("context")
+    port_factory = request.getfixturevalue("unused_udp_port_factory")
+    server_port    = port_factory()
+    client_port    = port_factory()
 
     # The order of start is important, first server, then client.
-    await context.start_server()
-    await context.start_client()
+    await context.start_server(remote_ip="127.0.0.1", remote_port=client_port, local_port=server_port)
+    await context.start_client(remote_ip=None, remote_port=None, local_port=client_port)
 
     await context.server._waitConnected(5)
     assert context.server.connected == True
@@ -547,8 +551,8 @@ async def test_requestGuid(name, exp_dst_addr, exp_svc_id, exp_obj_type, exp_obj
         return req,rsp
 
     # Start 2 parallel tasks, for server and for client
-    task_server = asyncio.create_task(context.server.requestGuid(retries=1, timeout=5))
     task_client = asyncio.create_task(clientHandler())
+    task_server = asyncio.create_task(context.server.requestGuid(retries=1, timeout=5))
 
     # Wait for client to finish and check the received request
     req, rsp = await task_client
@@ -575,7 +579,7 @@ async def data_message():
 
 
 @pytest.mark.asyncio
-@pytest.mark.usefixtures("context", "data_message")
+@pytest.mark.usefixtures("context", "unused_udp_port_factory", "data_message")
 @pytest.mark.parametrize(
     "name, test_nr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except",
     [
@@ -586,14 +590,17 @@ async def data_message():
 )
 async def test_requestMessage(name, test_nr, exp_svc_id, exp_obj_type, exp_obj_id, exp_prop_id, rsp_flags, rsp_data, exp_value, exp_except, request):
     context = request.getfixturevalue("context")
+    port_factory = request.getfixturevalue("unused_udp_port_factory")
+    server_port    = port_factory()
+    client_port    = port_factory()
 
     if isinstance(rsp_data, str):
         rsp_data = request.getfixturevalue(rsp_data)
         rsp_data = rsp_data.pack()
 
     # The order of start is important, first server, then client.
-    await context.start_server()
-    await context.start_client()
+    await context.start_server(remote_ip="127.0.0.1", remote_port=client_port, local_port=server_port)
+    await context.start_client(remote_ip=None, remote_port=None, local_port=client_port)
 
     await context.server._waitConnected(5)
     assert context.server.connected == True

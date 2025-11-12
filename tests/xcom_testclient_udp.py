@@ -1,9 +1,9 @@
 """xcom_api.py: communication api to Studer Xcom via LAN."""
 
 import asyncio
+import asyncudp
 import logging
-
-import serial_asyncio
+import socket
 
 from aioxcom import  (
     XcomApiTimeoutException,
@@ -15,11 +15,7 @@ from aioxcom import  (
 _LOGGER = logging.getLogger(__name__)
 
 
-DEFAULT_PORT = 54001
-DEFAULT_BAUDRATE = 115200
-DEFAULT_DATA_BITS = 8
-DEFAULT_STOP_BITS = serial_asyncio.serial.STOPBITS_ONE
-DEFAULT_PARITY = serial_asyncio.serial.PARITY_NONE
+DEFAULT_LOCAL_PORT = 54001
 START_TIMEOUT = 30 # seconds
 STOP_TIMEOUT = 5
 REQ_TIMEOUT = 2
@@ -27,19 +23,21 @@ REQ_RETRIES = 3
 
 
 ##
-## Class implementing Xcom-RS232i network protocol
+## Class implementing Xcom-LAN TCP network protocol
 ##
-class XcomTestClientSerial:
+class XcomTestClientUdp:
 
-    def __init__(self, port=DEFAULT_PORT):
+    def __init__(self, remote_ip: str, remote_port: int, local_port=DEFAULT_LOCAL_PORT):
         """
-        Initialize the mock test client.
+        MOXA is connecting to the UCP Server we are creating here.
+        Once it is connected we can send package requests.
         """
         super().__init__()
 
-        self.localPort = port
-        self._reader = None
-        self._writer = None
+        self._remote_ip = remote_ip
+        self._remote_port = remote_port
+        self._local_port = local_port    
+        self._socket = None    
         self._connected = False
 
         self._receivePackageLock = asyncio.Lock() # to make sure receivePackage is never called concurrently
@@ -52,50 +50,39 @@ class XcomTestClientSerial:
         return self._connected
 
 
-    async def start(self, timeout=START_TIMEOUT, loop=None) -> bool:
+    async def start(self, timeout=START_TIMEOUT) -> bool:
         """
         Start the Xcom Client and listening to the Xcom server.
         """
         if not self._connected:
-            _LOGGER.info(f"Xcom Serial Test Client connect to port {self.localPort}")
+            _LOGGER.info(f"Xcom UDP Test Client start connect to port {self._local_port}")
 
-            self._reader, self._writer = await serial_asyncio.open_serial_connection(
-                loop = loop,
-                url = self.localPort, 
-                baudrate = DEFAULT_BAUDRATE,
-                bytesize = DEFAULT_DATA_BITS,
-                stopbits = DEFAULT_STOP_BITS,
-                parity = DEFAULT_PARITY
-            )
-
-            _LOGGER.info(f"Xcom Serial Test Client connected'")
-
-            # Seems to work better if we wait a short moment before we start communication
-            await asyncio.sleep(1)
+            self._socket = await asyncudp.create_socket(local_addr=('0.0.0.0', self._local_port))
             self._connected = True
         else:
-            _LOGGER.info(f"Xcom Serial Test Client already listening on port {self.localPort}")
+            _LOGGER.info(f"Xcom UDP Test Client already listening on port {self._local_port}") 
+
+        return True      
 
 
     async def stop(self):
         """
-        Stop listening to the the Xcom Server and stop the Xcom Serial Test Client
+        Stop listening to the the Xcom Server and stop the Xcom UDP Test Client
         """
-        _LOGGER.info(f"Stopping Xcom Serial Test Client")
+        _LOGGER.info(f"Stopping Xcom UDP Test Client")
         try:
             self._connected = False
 
             # Close the writer; we do not need to close the reader
-            if self._writer:
-                self._writer.close()
-                await self._writer.wait_closed()
-    
+            if self._socket:
+                self._socket.close()
+                
         except Exception as e:
-            _LOGGER.warning(f"Exception during closing of Xcom writer: {e}")
-        
-        self._reader = None
-        self._writer = None
-        _LOGGER.info(f"Stopped Xcom Serial Test Client")
+            _LOGGER.warning(f"Exception during closing of Xcom socket: {e}")
+
+        self._connected = False
+        self._socket = None
+        _LOGGER.info(f"Stopped Xcom UDP Test Client")
     
 
     async def receivePackage(self, timeout=REQ_TIMEOUT) -> XcomPackage | None:
@@ -115,10 +102,15 @@ class XcomTestClientSerial:
             try:
                 async with asyncio.timeout(timeout):
                     while True:
-                        request, _ = await XcomPackage.parse(self._reader)
+                        data,addr = await self._socket.recvfrom()
+                        request = await XcomPackage.parseBytes(data)
+
+                        if self._remote_ip is None and self._remote_port is None:
+                            self._remote_ip = addr[0]
+                            self._remote_port = addr[1]
 
                         if request is not None:
-                            _LOGGER.info(f"Xcom Serial Test Client received request package {request}")
+                            _LOGGER.info(f"Xcom UDP Test Client received request package {request} from {addr}")
                             return request
 
             except asyncio.TimeoutError as te:
@@ -145,9 +137,9 @@ class XcomTestClientSerial:
         async with self._sendPackageLock:
             # Send the package to the Xcom server
             try:
-                _LOGGER.info(f"Xcom Serial Test Client send response package {package}")
-                self._writer.write(package.getBytes())
-                await self._writer.drain()
+                _LOGGER.info(f"Xcom UDP Test Client send response package {package}")
+
+                self._socket.sendto(package.getBytes(), addr=(self._remote_ip, self._remote_port))
 
             except Exception as e:
                 msg = f"Exception while sending package to Xcom server: {e}"
