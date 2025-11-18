@@ -1,10 +1,10 @@
 [project]
 name = "aioxcom"
-version = "2.4.0"
+version = "2.5.0"
 authors = [
   { name="Anko Hanse", email="anko_hanse@hotmail.com" },
 ]
-description = "Async python library to communicate with Studer-Innotec devices on the local network via Xcom protocol"
+description = "Depricated. Please use pystuderxcom library instead."
 readme = "README.md"
 classifiers = [
     "Programming Language :: Python :: 3",

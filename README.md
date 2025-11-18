@@ -4,6 +4,14 @@
 
 # aioxcom
 
+This library is depricated and no longer maintained.
+
+Please switch to using the pystuderxcom library, which has adds support for Udp and Serial and makes available async and sync classes.
+
+Some minor class and function renaming is required when making this switch.
+
+---
+
 Python library for retrieving sensor information from Studer-Innotec devices.
 This component connects directly over the local network using the Studer xcom protocol.
 
